@@ -16,3 +16,10 @@ function formatTime(value) {
 function twoDigits(number) {
   return (number < 10 ? "0" : "") + number
 }
+
+function progressFraction(position, length) {
+  var total = Number(length)
+  var current = Number(position)
+  if (!isFinite(total) || total <= 0 || !isFinite(current)) return 0
+  return Math.min(1, Math.max(0, current / total))
+}
