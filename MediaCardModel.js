@@ -75,3 +75,8 @@ function dbusPlayerName(dbusName) {
 function capitalize(text) {
   return text.charAt(0).toUpperCase() + text.slice(1)
 }
+
+function playerState(player) {
+  if (!player) return ""
+  return player.isPlaying ? "playing" : "paused"
+}
