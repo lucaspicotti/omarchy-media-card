@@ -23,3 +23,10 @@ function progressFraction(position, length) {
   if (!isFinite(total) || total <= 0 || !isFinite(current)) return 0
   return Math.min(1, Math.max(0, current / total))
 }
+
+function limitText(text, max) {
+  var value = text === null || text === undefined ? "" : String(text)
+  var chars = Array.from(value)
+  if (chars.length <= max) return value
+  return chars.slice(0, max - 1).join("").replace(/\s+$/, "") + "…"
+}
