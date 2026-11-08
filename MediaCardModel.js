@@ -54,3 +54,7 @@ function settingsFrom(raw) {
   }
   return result
 }
+
+function widgetVisible(hasMedia, settings) {
+  return !!hasMedia || !settingsFrom(settings).hideWhenIdle
+}
