@@ -58,3 +58,20 @@ function settingsFrom(raw) {
 function widgetVisible(hasMedia, settings) {
   return !!hasMedia || !settingsFrom(settings).hideWhenIdle
 }
+
+function playerLabel(player) {
+  if (!player) return ""
+  if (player.identity) return player.identity
+  return capitalize(player.desktopEntry || dbusPlayerName(player.dbusName))
+}
+
+// "org.mpris.MediaPlayer2.chromium.instance4821" -> "chromium"
+function dbusPlayerName(dbusName) {
+  return String(dbusName || "")
+    .replace(/^org\.mpris\.MediaPlayer2\./, "")
+    .replace(/\.instance[0-9]+$/, "")
+}
+
+function capitalize(text) {
+  return text.charAt(0).toUpperCase() + text.slice(1)
+}
