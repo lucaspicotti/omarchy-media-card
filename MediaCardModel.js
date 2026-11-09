@@ -143,6 +143,27 @@ function toText(value) {
   return value === null || value === undefined ? "" : String(value)
 }
 
+// Third-party plugins cannot reach Omarchy's own media service, so the plugin
+// picks the player itself, in order: the one chosen in a tab while it still
+// has a track, the one playing, the first with a track, none.
+function activePlayer(players, preferredKey) {
+  var list = toArray(players)
+  return firstWhere(list, function(p) { return playerKey(p) === preferredKey && hasTrack(p) })
+    || firstWhere(list, function(p) { return p.isPlaying })
+    || firstWhere(list, hasTrack)
+}
+
+function hasTrack(player) {
+  return !!(player.trackTitle || player.trackArtist)
+}
+
+function firstWhere(list, predicate) {
+  for (var i = 0; i < list.length; i++) {
+    if (predicate(list[i])) return list[i]
+  }
+  return null
+}
+
 // The player at the top of the card: the selected one while it is in the
 // list, otherwise the first.
 function shownPlayerKey(list, selectedKey) {
