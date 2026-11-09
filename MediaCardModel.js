@@ -62,8 +62,9 @@ function settingsFrom(raw) {
   return result
 }
 
-function widgetVisible(hasMedia, settings) {
-  return !!hasMedia || !settingsFrom(settings).hideWhenIdle
+// Takes the already normalized hideWhenIdle (see settingsFrom).
+function widgetVisible(hasMedia, hideWhenIdle) {
+  return !!hasMedia || !hideWhenIdle
 }
 
 // What each bar style draws. A: status icon and text. B: cover, title and

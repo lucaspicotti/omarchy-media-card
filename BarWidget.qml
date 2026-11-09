@@ -18,21 +18,17 @@ BarWidget {
   // Set from the card's tabs; the model drops it once that player has no track.
   property string preferredKey: ""
   readonly property var activePlayer: Model.activePlayer(players, preferredKey)
-  readonly property bool hasMedia: !!activePlayer && Model.hasTrack(activePlayer)
 
-  readonly property var config: Model.settingsFrom({
-    barStyle: setting("barStyle", "icon"),
-    showVolume: setting("showVolume", false),
-    showOthers: setting("showOthers", true),
-    hideWhenIdle: setting("hideWhenIdle", true)
-  })
+  // settingsFrom fills in the defaults, so the raw map goes in as it is.
+  readonly property var config: Model.settingsFrom(settings)
+  readonly property var parts: Model.barParts(config.barStyle)
 
   readonly property var controls: Model.controlsFor(activePlayer)
-  readonly property string title: activePlayer ? String(activePlayer.trackTitle || "") : ""
-  readonly property string artist: activePlayer ? String(activePlayer.trackArtist || "") : ""
-  readonly property string artUrl: Model.safeArtUrl(activePlayer ? activePlayer.trackArtUrl : "")
+  readonly property var track: Model.nowPlaying(activePlayer)
+  // Kept apart from track: it changes every second while playing.
   readonly property real progress: activePlayer ? Model.progressFraction(activePlayer.position, activePlayer.length) : 0
-  readonly property string minimalText: Model.limitText(artist && title ? artist + " — " + title : (title || artist), 28)
+
+  readonly property string tooltip: Model.trackLine(track.title, track.artist)
 
   property bool cardOpen: false
   function close() { cardOpen = false }
@@ -40,26 +36,33 @@ BarWidget {
   readonly property color foreground: bar ? bar.barForeground : "white"
   readonly property int artSize: Math.min(Style.space(18), barSize - Style.space(6))
 
-  visible: Model.widgetVisible(hasMedia, config)
+  visible: Model.widgetVisible(track.hasMedia, config.hideWhenIdle)
   implicitWidth: visible ? content.implicitWidth + Style.space(14) : 0
   implicitHeight: barSize
 
   function playPause() {
-    var p = activePlayer
-    if (!p) return
-    if (p.canTogglePlaying) p.togglePlaying()
-    else if (p.isPlaying && p.canPause) p.pause()
-    else if (!p.isPlaying && p.canPlay) p.play()
+    var method = Model.playPauseMethod(activePlayer)
+    if (method) activePlayer[method]()
   }
-  function next() { if (activePlayer && activePlayer.canGoNext) activePlayer.next() }
-  function previous() { if (activePlayer && activePlayer.canGoPrevious) activePlayer.previous() }
+  function next() { if (controls.enabled.next) activePlayer.next() }
+  function previous() { if (controls.enabled.previous) activePlayer.previous() }
+
+  // A wheel notch skips one track; a touchpad adds up its small deltas until
+  // they make a notch's worth.
+  property real wheelAccumulator: 0
+  function scroll(delta) {
+    var wheel = Util.wheelSteps(wheelAccumulator, delta)
+    wheelAccumulator = wheel.remainder
+    if (wheel.steps > 0) previous()
+    else if (wheel.steps < 0) next()
+  }
 
   // MPRIS does not push position updates; ask for a fresh value while the
   // progress line is on screen and the track is moving.
   Timer {
     interval: 1000
     repeat: true
-    running: root.visible && root.config.barStyle === "icon" && root.controls.playing && !root.cardOpen
+    running: progressLine.visible && root.controls.playing && !root.cardOpen
     onTriggered: if (root.activePlayer) root.activePlayer.positionChanged()
   }
 
@@ -79,35 +82,27 @@ BarWidget {
     SizedImage {
       anchors.fill: parent
       crop: true
-      url: root.artUrl
+      url: root.track.artUrl
       visible: url != ""
     }
 
     Glyph {
       anchors.horizontalCenter: parent.horizontalCenter
-      visible: root.artUrl === ""
+      visible: root.track.artUrl === ""
       text: "󰝚"
     }
   }
 
-  component TransportButton: Glyph {
-    id: button
-    property string action: ""
-    property bool enabled: true
-    opacity: enabled ? 1 : 0.4
-
-    MouseArea {
-      anchors.fill: parent
-      anchors.margins: -Style.space(3)
-      enabled: button.enabled
-      cursorShape: Qt.PointingHandCursor
-      onClicked: function(mouse) {
-        mouse.accepted = true
-        if (button.action === "previous") root.previous()
-        else if (button.action === "next") root.next()
-        else root.playPause()
-      }
-    }
+  // The shell's own bar button: press feedback, optical centring and the
+  // bar's click-target registration come with it.
+  component TransportButton: WidgetButton {
+    property bool available: true
+    bar: root.bar
+    foreground: root.foreground
+    interactive: available
+    dimmed: !available
+    tooltipText: root.tooltip
+    onWheelMoved: function(delta) { root.scroll(delta) }
   }
 
   // Row cannot align children vertically on its own; each child centres itself
@@ -121,56 +116,49 @@ BarWidget {
     LayoutMirroring.enabled: false
     LayoutMirroring.childrenInherit: true
 
-    // A: icon and title.
+    // Which parts each style shows: see Model.barParts.
     Glyph {
-      visible: root.config.barStyle === "minimal"
+      visible: root.parts.statusIcon
       text: root.controls.playing ? "󰝚" : "󰏤"
       color: Commons.Color.accent
     }
 
-    // B and C: cover.
     Cover {
-      visible: root.config.barStyle !== "minimal"
+      visible: root.parts.cover
     }
 
     Glyph {
-      visible: root.config.barStyle === "minimal" && root.minimalText !== ""
-      text: root.minimalText
+      text: Model.barText(root.config.barStyle, root.track)
+      visible: text !== ""
     }
 
-    Glyph {
-      visible: root.config.barStyle === "controls" && root.title !== ""
-      text: Model.limitText(root.title, 24)
-    }
-
-    // B: previous, play/pause, next.
     TransportButton {
-      visible: root.config.barStyle === "controls"
-      action: "previous"
-      enabled: root.controls.enabled.previous
+      visible: root.parts.skip
+      available: root.controls.enabled.previous
       text: "󰒮"
+      onPressed: root.previous()
     }
 
-    // B and C: play/pause.
     TransportButton {
-      visible: root.config.barStyle !== "minimal"
-      action: "playPause"
-      enabled: root.controls.enabled.playPause
+      visible: root.parts.playPause
+      available: root.controls.enabled.playPause
       text: root.controls.playing ? "󰏤" : "󰐊"
-      color: Commons.Color.accent
+      foreground: Commons.Color.accent
+      onPressed: root.playPause()
     }
 
     TransportButton {
-      visible: root.config.barStyle === "controls"
-      action: "next"
-      enabled: root.controls.enabled.next
+      visible: root.parts.skip
+      available: root.controls.enabled.next
       text: "󰒭"
+      onPressed: root.next()
     }
   }
 
   // C: thin progress line under the cover and the play button.
   Rectangle {
-    visible: root.config.barStyle === "icon"
+    id: progressLine
+    visible: root.parts.progress
     anchors.horizontalCenter: content.horizontalCenter
     anchors.bottom: parent.bottom
     anchors.bottomMargin: Style.space(3)
@@ -199,11 +187,8 @@ BarWidget {
       if (mouse.button === Qt.MiddleButton) root.playPause()
       else root.cardOpen = !root.cardOpen
     }
-    onWheel: function(wheel) {
-      if (wheel.angleDelta.y > 0) root.previous()
-      else if (wheel.angleDelta.y < 0) root.next()
-    }
-    onEntered: if (root.bar) root.bar.showTooltip(root, root.title + (root.artist ? " — " + root.artist : ""))
+    onWheel: function(wheel) { root.scroll(wheel.angleDelta.y) }
+    onEntered: if (root.bar) root.bar.showTooltip(root, root.tooltip)
     onExited: if (root.bar) root.bar.hideTooltip(root)
   }
 }
