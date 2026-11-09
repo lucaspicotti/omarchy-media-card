@@ -38,8 +38,6 @@ var BAR_STYLES = ["minimal", "controls", "icon"]
 
 var DEFAULT_SETTINGS = {
   barStyle: "icon",
-  showVolume: false,
-  showOthers: true,
   hideWhenIdle: true
 }
 

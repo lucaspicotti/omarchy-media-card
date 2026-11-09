@@ -6,8 +6,6 @@ const Model = loadQmlJs('MediaCardModel.js')
 
 const DEFAULTS = {
   barStyle: 'icon',
-  showVolume: false,
-  showOthers: true,
   hideWhenIdle: true
 }
 
@@ -18,8 +16,6 @@ test('settingsFrom aplica os padrões quando nada foi configurado', () => {
 test('settingsFrom mantém valores válidos configurados pelo usuário', () => {
   const custom = {
     barStyle: 'controls',
-    showVolume: true,
-    showOthers: false,
     hideWhenIdle: false
   }
   assert.deepStrictEqual(plain(Model.settingsFrom(custom)), custom)
@@ -29,8 +25,6 @@ test('settingsFrom mantém valores válidos configurados pelo usuário', () => {
 test('settingsFrom ignora valores inválidos e usa o padrão', () => {
   const invalid = {
     barStyle: 'gigante',
-    showVolume: 'sim',
-    showOthers: 0,
     hideWhenIdle: null
   }
   assert.deepStrictEqual(plain(Model.settingsFrom(invalid)), DEFAULTS)
@@ -40,4 +34,9 @@ test('settingsFrom aplica os padrões quando a configuração está ausente', ()
   for (const raw of [null, undefined]) {
     assert.deepStrictEqual(plain(Model.settingsFrom(raw)), DEFAULTS, `configuração: ${raw}`)
   }
+})
+
+test('settingsFrom não devolve opções que o widget não usa', () => {
+  const result = plain(Model.settingsFrom({ showVolume: true, showOthers: false }))
+  assert.deepStrictEqual(Object.keys(result).sort(), ['barStyle', 'hideWhenIdle'])
 })
