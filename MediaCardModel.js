@@ -84,13 +84,34 @@ function playerState(player) {
 function tabsFor(players, selectedKey) {
   var list = toArray(players)
   if (list.length < 2) return []
-  var tabs = list.map(function(player) {
+  var shownKey = shownPlayerKey(list, selectedKey)
+  return list.map(function(player) {
     var key = playerKey(player)
-    return { key: key, label: playerLabel(player), selected: key === selectedKey }
+    return { key: key, label: playerLabel(player), selected: key === shownKey }
   })
-  var anySelected = tabs.some(function(tab) { return tab.selected })
-  if (!anySelected) tabs[0].selected = true
-  return tabs
+}
+
+function otherPlayers(players, selectedKey, settings) {
+  if (!settingsFrom(settings).showOthers) return []
+  var list = toArray(players)
+  var shownKey = shownPlayerKey(list, selectedKey)
+  return list
+    .filter(function(player) { return playerKey(player) !== shownKey })
+    .map(function(player) {
+      return {
+        key: playerKey(player),
+        label: playerLabel(player),
+        title: String(player.trackTitle || ""),
+        state: playerState(player)
+      }
+    })
+}
+
+// The player at the top of the card: the selected one while it is in the
+// list, otherwise the first.
+function shownPlayerKey(list, selectedKey) {
+  var found = list.some(function(player) { return playerKey(player) === selectedKey })
+  return found ? selectedKey : playerKey(list[0])
 }
 
 // Same rule as MediaModel.playerKey in Omarchy's media service, so the key can
@@ -100,10 +121,13 @@ function playerKey(player) {
   return String(player.dbusName || player.desktopEntry || player.identity || "")
 }
 
-// Copies a QML list (array-like, no Array methods) into a real array.
+// Copies a QML list (array-like, no Array methods) into a real array, skipping
+// empty entries left by a player that is going away.
 function toArray(list) {
   var result = []
   var length = list ? list.length || 0 : 0
-  for (var i = 0; i < length; i++) result.push(list[i])
+  for (var i = 0; i < length; i++) {
+    if (list[i]) result.push(list[i])
+  }
   return result
 }
