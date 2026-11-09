@@ -30,8 +30,8 @@ BarWidget {
 
   readonly property string tooltip: Model.trackLine(track.title, track.artist)
 
-  property bool cardOpen: false
-  function close() { cardOpen = false }
+  // The shell's Bar.qml may call close(); there is no card to close yet.
+  function close() {}
 
   readonly property color foreground: bar ? bar.barForeground : "white"
   readonly property int artSize: Math.min(Style.space(18), barSize - Style.space(6))
@@ -62,7 +62,7 @@ BarWidget {
   Timer {
     interval: 1000
     repeat: true
-    running: progressLine.visible && root.controls.playing && !root.cardOpen
+    running: progressLine.visible && root.controls.playing
     onTriggered: if (root.activePlayer) root.activePlayer.positionChanged()
   }
 
@@ -175,18 +175,15 @@ BarWidget {
     }
   }
 
-  // Click anywhere else on the widget: open or close the card. Middle click
-  // pauses, the wheel skips, as the built-in media widget does.
+  // Left or middle click anywhere else on the widget plays or pauses. The wheel
+  // skips tracks, as the built-in media widget does.
   MouseArea {
     anchors.fill: parent
     z: -1
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
     acceptedButtons: Qt.LeftButton | Qt.MiddleButton
-    onClicked: function(mouse) {
-      if (mouse.button === Qt.MiddleButton) root.playPause()
-      else root.cardOpen = !root.cardOpen
-    }
+    onClicked: root.playPause()
     onWheel: function(wheel) { root.scroll(wheel.angleDelta.y) }
     onEntered: if (root.bar) root.bar.showTooltip(root, root.tooltip)
     onExited: if (root.bar) root.bar.hideTooltip(root)
