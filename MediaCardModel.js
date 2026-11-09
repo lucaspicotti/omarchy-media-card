@@ -80,3 +80,30 @@ function playerState(player) {
   if (!player) return ""
   return player.isPlaying ? "playing" : "paused"
 }
+
+function tabsFor(players, selectedKey) {
+  var list = toArray(players)
+  if (list.length < 2) return []
+  var tabs = list.map(function(player) {
+    var key = playerKey(player)
+    return { key: key, label: playerLabel(player), selected: key === selectedKey }
+  })
+  var anySelected = tabs.some(function(tab) { return tab.selected })
+  if (!anySelected) tabs[0].selected = true
+  return tabs
+}
+
+// Same rule as MediaModel.playerKey in Omarchy's media service, so the key can
+// be handed to its selectPlayer().
+function playerKey(player) {
+  if (!player) return ""
+  return String(player.dbusName || player.desktopEntry || player.identity || "")
+}
+
+// Copies a QML list (array-like, no Array methods) into a real array.
+function toArray(list) {
+  var result = []
+  var length = list ? list.length || 0 : 0
+  for (var i = 0; i < length; i++) result.push(list[i])
+  return result
+}
