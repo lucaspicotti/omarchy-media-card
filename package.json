@@ -1,7 +1,7 @@
 {
   "name": "omarchy-media-card",
   "private": true,
-  "description": "Media controls for the Omarchy bar with a player card popup",
+  "description": "Media controls for the Omarchy bar: cover, progress line and transport controls in three styles",
   "license": "MIT",
   "scripts": {
     "test": "node --test tests/"

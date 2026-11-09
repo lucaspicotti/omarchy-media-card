@@ -133,7 +133,8 @@ function tabsFor(players, selectedKey) {
   })
 }
 
-// Takes the already normalized showOthers (see settingsFrom).
+// For the card (another branch). showOthers is a boolean; the setting that feeds
+// it comes back to settingsFrom with the card.
 function otherPlayers(players, selectedKey, showOthers) {
   if (!showOthers) return []
   var list = toArray(players)
