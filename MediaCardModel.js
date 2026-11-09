@@ -25,7 +25,7 @@ function progressFraction(position, length) {
 }
 
 function limitText(text, max) {
-  var value = text === null || text === undefined ? "" : String(text)
+  var value = toText(text)
   var chars = Array.from(value)
   if (chars.length <= max) return value
   return chars.slice(0, max - 1).join("").replace(/\s+$/, "") + "…"
@@ -105,6 +105,22 @@ function otherPlayers(players, selectedKey, settings) {
         state: playerState(player)
       }
     })
+}
+
+// Cover addresses come from whichever program registered as a player. Only
+// https covers and files a browser saved to disk are loaded; no whitespace or
+// control characters, and nothing long enough to be a payload.
+var MAX_ART_URL_LENGTH = 2048
+var SAFE_ART_URL = /^(https|file):\/\/[^\s\x00-\x1f\x7f]+$/i
+
+function safeArtUrl(url) {
+  var text = toText(url)
+  if (text.length > MAX_ART_URL_LENGTH) return ""
+  return SAFE_ART_URL.test(text) ? text : ""
+}
+
+function toText(value) {
+  return value === null || value === undefined ? "" : String(value)
 }
 
 // The player at the top of the card: the selected one while it is in the
