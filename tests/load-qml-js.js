@@ -12,4 +12,10 @@ function loadQmlJs(relativePath) {
   return context
 }
 
-module.exports = { loadQmlJs }
+// Objects built inside the model's context have another Object prototype, so
+// tests compare plain copies.
+function plain(value) {
+  return JSON.parse(JSON.stringify(value))
+}
+
+module.exports = { loadQmlJs, plain }

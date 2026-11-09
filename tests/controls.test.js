@@ -1,12 +1,8 @@
 const test = require('node:test')
 const assert = require('node:assert')
-const { loadQmlJs } = require('./load-qml-js.js')
+const { loadQmlJs, plain } = require('./load-qml-js.js')
 
 const Model = loadQmlJs('MediaCardModel.js')
-
-function plain(value) {
-  return JSON.parse(JSON.stringify(value))
-}
 
 // Property names as Quickshell's MprisPlayer exposes them.
 const FULL = {

@@ -1,14 +1,8 @@
 const test = require('node:test')
 const assert = require('node:assert')
-const { loadQmlJs } = require('./load-qml-js.js')
+const { loadQmlJs, plain } = require('./load-qml-js.js')
 
 const Model = loadQmlJs('MediaCardModel.js')
-
-// Objects built inside the model's context have another Object prototype, so
-// compare plain copies.
-function plain(value) {
-  return JSON.parse(JSON.stringify(value))
-}
 
 const DEFAULTS = {
   barStyle: 'icon',

@@ -1,12 +1,8 @@
 const test = require('node:test')
 const assert = require('node:assert')
-const { loadQmlJs } = require('./load-qml-js.js')
+const { loadQmlJs, plain } = require('./load-qml-js.js')
 
 const Model = loadQmlJs('MediaCardModel.js')
-
-function plain(value) {
-  return JSON.parse(JSON.stringify(value))
-}
 
 const SPOTIFY = { dbusName: 'org.mpris.MediaPlayer2.spotify', identity: 'Spotify', trackTitle: 'Maria Tambiên', isPlaying: true }
 const CHROME = { dbusName: 'org.mpris.MediaPlayer2.chromium.instance4821', identity: 'Chromium', trackTitle: 'Vídeo do YouTube', isPlaying: false }

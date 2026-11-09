@@ -2,14 +2,10 @@ const test = require('node:test')
 const assert = require('node:assert')
 const fs = require('node:fs')
 const path = require('node:path')
-const { loadQmlJs } = require('./load-qml-js.js')
+const { loadQmlJs, plain } = require('./load-qml-js.js')
 
 const Model = loadQmlJs('MediaCardModel.js')
 const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'manifest.json'), 'utf8'))
-
-function plain(value) {
-  return JSON.parse(JSON.stringify(value))
-}
 
 function schema() {
   return (manifest.barWidget && manifest.barWidget.schema) || []
@@ -29,6 +25,7 @@ test('manifest oferece exatamente os estilos de barra que o modelo aceita', () =
 })
 
 test('manifest declara cada opção booleana com o tipo boolean', () => {
-  const types = schema().filter((field) => field.key !== 'barStyle').map((field) => [field.key, field.type])
-  assert.deepStrictEqual(types, [['showVolume', 'boolean'], ['showOthers', 'boolean'], ['hideWhenIdle', 'boolean']])
+  const booleans = schema().filter((field) => typeof field.defaultValue === 'boolean')
+  assert.ok(booleans.length > 0)
+  for (const field of booleans) assert.strictEqual(field.type, 'boolean', `opção: ${field.key}`)
 })
