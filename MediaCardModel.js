@@ -107,6 +107,26 @@ function otherPlayers(players, selectedKey, settings) {
     })
 }
 
+// Indexed by Quickshell's MprisLoopState enum: None, Track, Playlist.
+var REPEAT_MODES = ["none", "track", "playlist"]
+
+function controlsFor(value) {
+  var player = value || {}
+  return {
+    enabled: {
+      previous: !!player.canGoPrevious,
+      playPause: !!(player.canTogglePlaying || player.canPlay || player.canPause),
+      next: !!player.canGoNext,
+      shuffle: !!player.shuffleSupported,
+      repeat: !!player.loopSupported,
+      raise: !!player.canRaise
+    },
+    playing: !!player.isPlaying,
+    shuffleOn: !!player.shuffle,
+    repeatMode: REPEAT_MODES[player.loopState] || "none"
+  }
+}
+
 // Cover addresses come from whichever program registered as a player. Only
 // https covers and files a browser saved to disk are loaded; no whitespace or
 // control characters, and nothing long enough to be a payload.
