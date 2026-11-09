@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "id": "lucaspicotti.media-card",
+  "name": "Media Card",
+  "version": "0.1.0",
+  "author": "Lucas Picotti",
+  "license": "MIT",
+  "description": "Media controls for the Omarchy bar with a player card: cover, progress, transport controls and every other player that is open.",
+  "homepage": "https://github.com/lucaspicotti/omarchy-media-card",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Media Card",
+    "description": "Now playing in the bar, with a card for every open player.",
+    "category": "Media",
+    "allowMultiple": false,
+    "defaultSection": "centerEnd",
+    "schema": [
+      {
+        "key": "barStyle",
+        "type": "enum",
+        "label": "Bar style",
+        "options": [
+          { "value": "minimal", "label": "Minimal: icon and title" },
+          { "value": "controls", "label": "Cover and controls" },
+          { "value": "icon", "label": "Cover with progress line" }
+        ],
+        "defaultValue": "icon",
+        "description": "How the widget looks in the bar. Cover with progress line takes the least room."
+      },
+      {
+        "key": "showVolume",
+        "type": "boolean",
+        "label": "Show player volume",
+        "defaultValue": false,
+        "description": "Adds a volume slider for the player to the card."
+      },
+      {
+        "key": "showOthers",
+        "type": "boolean",
+        "label": "Show \"Also playing\"",
+        "defaultValue": true,
+        "description": "Lists the other open players at the bottom of the card. The player tabs stay either way."
+      },
+      {
+        "key": "hideWhenIdle",
+        "type": "boolean",
+        "label": "Hide when nothing plays",
+        "defaultValue": true,
+        "description": "Removes the widget from the bar while no player has a track."
+      }
+    ]
+  }
+}
