@@ -26,6 +26,8 @@ function progressFraction(position, length) {
 
 function limitText(text, max) {
   var value = toText(text)
+  // UTF-16 length is never below the code-point count, so this skips the copy.
+  if (value.length <= max) return value
   var chars = Array.from(value)
   if (chars.length <= max) return value
   return chars.slice(0, max - 1).join("").replace(/\s+$/, "") + "…"
@@ -41,9 +43,14 @@ var DEFAULT_SETTINGS = {
   hideWhenIdle: true
 }
 
+// Settings that take one of a fixed list; every other setting is valid when it
+// has the same type as its default.
+var SETTING_OPTIONS = { barStyle: BAR_STYLES }
+
 function isValidSetting(key, value) {
-  if (key === "barStyle") return BAR_STYLES.indexOf(value) !== -1
-  return typeof value === "boolean"
+  var options = SETTING_OPTIONS[key]
+  if (options) return options.indexOf(value) !== -1
+  return typeof value === typeof DEFAULT_SETTINGS[key]
 }
 
 function settingsFrom(raw) {
@@ -59,13 +66,49 @@ function widgetVisible(hasMedia, settings) {
   return !!hasMedia || !settingsFrom(settings).hideWhenIdle
 }
 
+// What each bar style draws. A: status icon and text. B: cover, title and
+// previous/play/next. C: cover, play/pause and a progress line.
+function barParts(style) {
+  return {
+    statusIcon: style === "minimal",
+    cover: style !== "minimal",
+    skip: style === "controls",
+    playPause: style !== "minimal",
+    progress: style === "icon"
+  }
+}
+
+// The text beside the controls: "artist — title" for A, the title for B.
+function barText(style, track) {
+  if (style === "minimal") return limitText(trackLine(track.artist, track.title), 28)
+  if (style === "controls") return limitText(track.title, 24)
+  return ""
+}
+
+// Joins the parts that are not empty with an em dash.
+function trackLine(first, second) {
+  return [toText(first), toText(second)].filter(function(part) { return part !== "" }).join(" — ")
+}
+
+// The active player's track, with every field already safe to show.
+function nowPlaying(player) {
+  var p = player || {}
+  return {
+    hasMedia: hasTrack(player),
+    title: toText(p.trackTitle),
+    artist: toText(p.trackArtist),
+    artUrl: safeArtUrl(p.trackArtUrl)
+  }
+}
+
 function playerLabel(player) {
   if (!player) return ""
   if (player.identity) return player.identity
   return capitalize(player.desktopEntry || dbusPlayerName(player.dbusName))
 }
 
-// "org.mpris.MediaPlayer2.chromium.instance4821" -> "chromium"
+// "org.mpris.MediaPlayer2.chromium.instance4821" -> "chromium". Same
+// patterns as MediaModel.playerAppLabel in Omarchy's media service.
 function dbusPlayerName(dbusName) {
   return String(dbusName || "")
     .replace(/^org\.mpris\.MediaPlayer2\./, "")
@@ -91,20 +134,18 @@ function tabsFor(players, selectedKey) {
   })
 }
 
-function otherPlayers(players, selectedKey, settings) {
-  if (!settingsFrom(settings).showOthers) return []
+// Takes the already normalized showOthers (see settingsFrom).
+function otherPlayers(players, selectedKey, showOthers) {
+  if (!showOthers) return []
   var list = toArray(players)
   var shownKey = shownPlayerKey(list, selectedKey)
-  return list
-    .filter(function(player) { return playerKey(player) !== shownKey })
-    .map(function(player) {
-      return {
-        key: playerKey(player),
-        label: playerLabel(player),
-        title: String(player.trackTitle || ""),
-        state: playerState(player)
-      }
-    })
+  var result = []
+  list.forEach(function(player) {
+    var key = playerKey(player)
+    if (key === shownKey) return
+    result.push({ key: key, label: playerLabel(player), title: toText(player.trackTitle), state: playerState(player) })
+  })
+  return result
 }
 
 // Indexed by Quickshell's MprisLoopState enum: None, Track, Playlist.
@@ -125,6 +166,15 @@ function controlsFor(value) {
     shuffleOn: !!player.shuffle,
     repeatMode: REPEAT_MODES[player.loopState] || "none"
   }
+}
+
+// The MprisPlayer method play/pause calls, or "" when the player cannot.
+// Same order as Omarchy's media service: toggle, else pause or play.
+function playPauseMethod(player) {
+  if (!player) return ""
+  if (player.canTogglePlaying) return "togglePlaying"
+  if (player.isPlaying) return player.canPause ? "pause" : ""
+  return player.canPlay ? "play" : ""
 }
 
 // Cover addresses come from whichever program registered as a player. Only
@@ -153,8 +203,9 @@ function activePlayer(players, preferredKey) {
     || firstWhere(list, hasTrack)
 }
 
+// Same rule as MediaModel.hasShownTrack in Omarchy's media service.
 function hasTrack(player) {
-  return !!(player.trackTitle || player.trackArtist)
+  return !!player && !!(player.trackTitle || player.trackArtist)
 }
 
 function firstWhere(list, predicate) {
@@ -171,8 +222,8 @@ function shownPlayerKey(list, selectedKey) {
   return found ? selectedKey : playerKey(list[0])
 }
 
-// Same rule as MediaModel.playerKey in Omarchy's media service, so the key can
-// be handed to its selectPlayer().
+// Stable key per player, also used as the bar's preferredKey. Same rule as
+// MediaModel.playerKey in Omarchy's media service.
 function playerKey(player) {
   if (!player) return ""
   return String(player.dbusName || player.desktopEntry || player.identity || "")
