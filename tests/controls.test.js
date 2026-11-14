@@ -13,10 +13,11 @@ const FULL = {
   canTogglePlaying: true,
   canRaise: true,
   shuffleSupported: true,
-  loopSupported: true
+  loopSupported: true,
+  volumeSupported: true
 }
 
-const NONE_ENABLED = { previous: false, playPause: false, next: false, shuffle: false, repeat: false, raise: false }
+const NONE_ENABLED = { previous: false, playPause: false, next: false, shuffle: false, repeat: false, raise: false, volume: false }
 
 test('controlsFor habilita todos os botões de um player que suporta tudo', () => {
   const enabled = plain(Model.controlsFor(FULL)).enabled
@@ -26,7 +27,8 @@ test('controlsFor habilita todos os botões de um player que suporta tudo', () =
     next: true,
     shuffle: true,
     repeat: true,
-    raise: true
+    raise: true,
+    volume: true
   })
 })
 

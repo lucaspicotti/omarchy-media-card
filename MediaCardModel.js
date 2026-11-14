@@ -96,6 +96,7 @@ function nowPlaying(player) {
     hasMedia: hasTrack(player),
     title: toText(p.trackTitle),
     artist: toText(p.trackArtist),
+    album: toText(p.trackAlbum),
     artUrl: safeArtUrl(p.trackArtUrl)
   }
 }
@@ -133,8 +134,7 @@ function tabsFor(players, selectedKey) {
   })
 }
 
-// For the card (another branch). showOthers is a boolean; the setting that feeds
-// it comes back to settingsFrom with the card.
+// "Também tocando" in the card; showOthers is the normalized setting.
 function otherPlayers(players, selectedKey, showOthers) {
   if (!showOthers) return []
   var list = toArray(players)
@@ -143,7 +143,13 @@ function otherPlayers(players, selectedKey, showOthers) {
   list.forEach(function(player) {
     var key = playerKey(player)
     if (key === shownKey) return
-    result.push({ key: key, label: playerLabel(player), title: toText(player.trackTitle), state: playerState(player) })
+    result.push({
+      key: key,
+      label: playerLabel(player),
+      title: toText(player.trackTitle),
+      state: playerState(player),
+      artUrl: safeArtUrl(player.trackArtUrl)
+    })
   })
   return result
 }
@@ -160,12 +166,31 @@ function controlsFor(value) {
       next: !!player.canGoNext,
       shuffle: !!player.shuffleSupported,
       repeat: !!player.loopSupported,
-      raise: !!player.canRaise
+      raise: !!player.canRaise,
+      volume: !!player.volumeSupported
     },
     playing: !!player.isPlaying,
     shuffleOn: !!player.shuffle,
     repeatMode: REPEAT_MODES[player.loopState] || "none"
   }
+}
+
+// Repeat button: off, whole list, this track, off. Takes and returns
+// MprisLoopState values (None 0, Track 1, Playlist 2).
+function nextLoopState(loopState) {
+  if (loopState === 2) return 1
+  if (loopState === 1) return 0
+  return 2
+}
+
+// MprisPlayer.volume runs from 0 to 1; each wheel step moves it 5 points.
+var VOLUME_STEP = 5
+
+function volumeAfter(volume, steps) {
+  var current = Number(volume)
+  var percent = isFinite(current) ? Math.round(current * 100) : 0
+  percent = Math.min(100, Math.max(0, percent + steps * VOLUME_STEP))
+  return percent / 100
 }
 
 // The MprisPlayer method play/pause calls, or "" when the player cannot.
@@ -201,6 +226,23 @@ function activePlayer(players, preferredKey) {
   return firstWhere(list, function(p) { return playerKey(p) === preferredKey && hasTrack(p) })
     || firstWhere(list, function(p) { return p.isPlaying })
     || firstWhere(list, hasTrack)
+}
+
+// The players the card and the right click deal with: the ones with a track.
+// activePlayer skips the others, so choosing one of them would do nothing.
+function mediaPlayers(players) {
+  return toArray(players).filter(hasTrack)
+}
+
+// Right click on the bar: the player after the current one, wrapping around.
+function nextPlayerKey(players, currentKey) {
+  var list = mediaPlayers(players)
+  if (list.length < 2) return ""
+  var index = -1
+  for (var i = 0; i < list.length; i++) {
+    if (playerKey(list[i]) === currentKey) index = i
+  }
+  return playerKey(list[(Math.max(index, 0) + 1) % list.length])
 }
 
 // Same rule as MediaModel.hasShownTrack in Omarchy's media service.
