@@ -15,7 +15,8 @@ BarWidget {
   moduleName: "lucaspicotti.media-card"
 
   readonly property var players: Mpris.players ? Mpris.players.values : []
-  // Set from the card's tabs; the model drops it once that player has no track.
+  // Set from the card's tabs and the right click; the model drops it once that
+  // player has no track.
   property string preferredKey: ""
   readonly property var activePlayer: Model.activePlayer(players, preferredKey)
 
@@ -47,14 +48,21 @@ BarWidget {
   function next() { if (controls.enabled.next) activePlayer.next() }
   function previous() { if (controls.enabled.previous) activePlayer.previous() }
 
-  // A wheel notch skips one track; a touchpad adds up its small deltas until
-  // they make a notch's worth.
+  // Right click: the next player with a track.
+  function switchPlayer() {
+    var key = Model.nextPlayerKey(players, Model.playerKey(activePlayer))
+    if (key) preferredKey = key
+  }
+
+  // A wheel notch moves the player's own volume 5 points; a touchpad adds up
+  // its small deltas until they make a notch's worth.
   property real wheelAccumulator: 0
-  function scroll(delta) {
-    var wheel = Util.wheelSteps(wheelAccumulator, delta)
-    wheelAccumulator = wheel.remainder
-    if (wheel.steps > 0) previous()
-    else if (wheel.steps < 0) next()
+  function wheel(delta) {
+    var steps = Util.wheelSteps(wheelAccumulator, delta)
+    wheelAccumulator = steps.remainder
+    if (steps.steps !== 0 && controls.enabled.volume) {
+      activePlayer.volume = Model.volumeAfter(activePlayer.volume, steps.steps)
+    }
   }
 
   // MPRIS does not push position updates; ask for a fresh value while the
@@ -102,7 +110,7 @@ BarWidget {
     interactive: available
     dimmed: !available
     tooltipText: root.tooltip
-    onWheelMoved: function(delta) { root.scroll(delta) }
+    onWheelMoved: function(delta) { root.wheel(delta) }
   }
 
   // Row cannot align children vertically on its own; each child centres itself
@@ -175,16 +183,19 @@ BarWidget {
     }
   }
 
-  // Left or middle click anywhere else on the widget plays or pauses. The wheel
-  // skips tracks, as the built-in media widget does.
+  // Anywhere else on the widget (design 1): left or middle click plays or
+  // pauses, right click switches players, the wheel sets the volume.
   MouseArea {
     anchors.fill: parent
     z: -1
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
-    acceptedButtons: Qt.LeftButton | Qt.MiddleButton
-    onClicked: root.playPause()
-    onWheel: function(wheel) { root.scroll(wheel.angleDelta.y) }
+    acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
+    onClicked: function(mouse) {
+      if (mouse.button === Qt.RightButton) root.switchPlayer()
+      else root.playPause()
+    }
+    onWheel: function(wheel) { root.wheel(wheel.angleDelta.y) }
     onEntered: if (root.bar) root.bar.showTooltip(root, root.tooltip)
     onExited: if (root.bar) root.bar.hideTooltip(root)
   }

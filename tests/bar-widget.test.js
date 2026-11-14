@@ -1,21 +1,8 @@
 const test = require('node:test')
 const assert = require('node:assert')
-const fs = require('node:fs')
-const path = require('node:path')
+const { readQml, block } = require('./qml-source.js')
 
-// There is no QML runtime in the tests, so these read BarWidget.qml as text.
-const source = fs.readFileSync(path.join(__dirname, '..', 'BarWidget.qml'), 'utf8')
-
-function block(name) {
-  const start = source.indexOf(name)
-  assert.notStrictEqual(start, -1, `bloco ${name} não encontrado`)
-  let depth = 0
-  for (let i = source.indexOf('{', start); i < source.length; i++) {
-    if (source[i] === '{') depth++
-    else if (source[i] === '}' && --depth === 0) return source.slice(start, i + 1)
-  }
-  return source.slice(start)
-}
+const source = readQml('BarWidget.qml')
 
 test('BarWidget não guarda estado de um card que ainda não existe', () => {
   assert.doesNotMatch(source, /cardOpen/)
@@ -26,12 +13,23 @@ test('BarWidget mantém close(), que o Bar.qml do Omarchy chama', () => {
 })
 
 test('o Timer da linha de progresso depende só da linha visível e do player tocando', () => {
-  const timer = block('Timer {')
+  const timer = block(source, 'Timer {')
   assert.match(timer, /running: progressLine\.visible && root\.controls\.playing\s*\n/)
 })
 
-test('clique esquerdo e do meio fazem play/pause', () => {
-  const mouseArea = block('MouseArea {')
-  assert.match(mouseArea, /acceptedButtons: Qt\.LeftButton \| Qt\.MiddleButton/)
-  assert.match(mouseArea, /onClicked: root\.playPause\(\)/)
+// Design 1: right click switches players, the wheel changes the player's
+// volume. Left and middle click play or pause until the card exists.
+test('clique esquerdo e do meio fazem play/pause e o direito troca de player', () => {
+  const mouseArea = block(source, 'MouseArea {')
+  assert.match(mouseArea, /acceptedButtons: Qt\.LeftButton \| Qt\.MiddleButton \| Qt\.RightButton/)
+  assert.match(mouseArea, /Qt\.RightButton\) root\.switchPlayer\(\)/)
+  assert.match(mouseArea, /else root\.playPause\(\)/)
+})
+
+test('a roda do mouse muda o volume do player, no widget e nos botões', () => {
+  assert.match(block(source, 'MouseArea {'), /onWheel: function\(wheel\) \{ root\.wheel\(wheel\.angleDelta\.y\) \}/)
+  assert.match(block(source, 'component TransportButton'), /onWheelMoved: function\(delta\) \{ root\.wheel\(delta\) \}/)
+  const wheel = block(source, 'function wheel(')
+  assert.match(wheel, /controls\.enabled\.volume/)
+  assert.match(wheel, /Model\.volumeAfter\(/)
 })

@@ -15,7 +15,7 @@
   },
   "barWidget": {
     "displayName": "Media Card",
-    "description": "Now playing in the bar, with play/pause and track skipping.",
+    "description": "Now playing in the bar, with play/pause. Scroll changes the player's volume and right click switches players.",
     "category": "Media",
     "allowMultiple": false,
     "defaultSection": "centerEnd",
