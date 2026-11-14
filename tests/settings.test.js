@@ -6,7 +6,9 @@ const Model = loadQmlJs('MediaCardModel.js')
 
 const DEFAULTS = {
   barStyle: 'icon',
-  hideWhenIdle: true
+  hideWhenIdle: true,
+  showVolume: false,
+  showOthers: true
 }
 
 test('settingsFrom aplica os padrões quando nada foi configurado', () => {
@@ -16,7 +18,9 @@ test('settingsFrom aplica os padrões quando nada foi configurado', () => {
 test('settingsFrom mantém valores válidos configurados pelo usuário', () => {
   const custom = {
     barStyle: 'controls',
-    hideWhenIdle: false
+    hideWhenIdle: false,
+    showVolume: true,
+    showOthers: false
   }
   assert.deepStrictEqual(plain(Model.settingsFrom(custom)), custom)
   assert.strictEqual(Model.settingsFrom({ barStyle: 'minimal' }).barStyle, 'minimal')
@@ -25,7 +29,9 @@ test('settingsFrom mantém valores válidos configurados pelo usuário', () => {
 test('settingsFrom ignora valores inválidos e usa o padrão', () => {
   const invalid = {
     barStyle: 'gigante',
-    hideWhenIdle: null
+    hideWhenIdle: null,
+    showVolume: 'sim',
+    showOthers: 0
   }
   assert.deepStrictEqual(plain(Model.settingsFrom(invalid)), DEFAULTS)
 })
@@ -36,7 +42,7 @@ test('settingsFrom aplica os padrões quando a configuração está ausente', ()
   }
 })
 
-test('settingsFrom não devolve opções que o widget não usa', () => {
-  const result = plain(Model.settingsFrom({ showVolume: true, showOthers: false }))
-  assert.deepStrictEqual(Object.keys(result).sort(), ['barStyle', 'hideWhenIdle'])
+test('settingsFrom ignora chaves que o plugin não conhece', () => {
+  const result = plain(Model.settingsFrom({ volume: 80, id: 'lucaspicotti.media-card' }))
+  assert.deepStrictEqual(result, DEFAULTS)
 })

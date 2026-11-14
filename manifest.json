@@ -5,7 +5,7 @@
   "version": "0.1.0",
   "author": "Lucas Picotti",
   "license": "MIT",
-  "description": "Media controls for the Omarchy bar in three styles, with a card for the active player: cover, progress, transport, shuffle, repeat and the other players.",
+  "description": "Media controls for the Omarchy bar in three styles, with a card for the active player: cover, progress, transport, shuffle, repeat, volume and the other players.",
   "homepage": "https://github.com/lucaspicotti/omarchy-media-card",
   "kinds": [
     "bar-widget"
@@ -38,6 +38,20 @@
         "label": "Hide when nothing plays",
         "defaultValue": true,
         "description": "Removes the widget from the bar while no player has a track."
+      },
+      {
+        "key": "showVolume",
+        "type": "boolean",
+        "label": "Show player volume",
+        "defaultValue": false,
+        "description": "Adds the player's own volume slider to the card, when the player supports it."
+      },
+      {
+        "key": "showOthers",
+        "type": "boolean",
+        "label": "Show \"Also playing\"",
+        "defaultValue": true,
+        "description": "Lists the other players in the card. The player tabs stay either way."
       }
     ]
   }

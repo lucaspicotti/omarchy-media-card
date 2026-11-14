@@ -38,7 +38,9 @@ var BAR_STYLES = ["minimal", "controls", "icon"]
 
 var DEFAULT_SETTINGS = {
   barStyle: "icon",
-  hideWhenIdle: true
+  hideWhenIdle: true,
+  showVolume: false,
+  showOthers: true
 }
 
 // Settings that take one of a fixed list; every other setting is valid when it
@@ -46,6 +48,7 @@ var DEFAULT_SETTINGS = {
 var SETTING_OPTIONS = { barStyle: BAR_STYLES }
 
 function isValidSetting(key, value) {
+  if (!Object.prototype.hasOwnProperty.call(DEFAULT_SETTINGS, key)) return false
   var options = SETTING_OPTIONS[key]
   if (options) return options.indexOf(value) !== -1
   return typeof value === typeof DEFAULT_SETTINGS[key]
@@ -58,6 +61,16 @@ function settingsFrom(raw) {
     result[key] = isValidSetting(key, value) ? value : DEFAULT_SETTINGS[key]
   }
   return result
+}
+
+var PLUGIN_ID = "lucaspicotti.media-card"
+
+// The argv that saves one setting in the widget's shell.json entry; the bar
+// hands the new settings back to the widget live. Empty when the value is not
+// one the plugin accepts. Run as an argv, never through a shell.
+function settingCommand(key, value) {
+  if (!isValidSetting(key, value)) return []
+  return ["omarchy-bar", "set", PLUGIN_ID, key, JSON.stringify(value), "--json"]
 }
 
 // Takes the already normalized hideWhenIdle (see settingsFrom).

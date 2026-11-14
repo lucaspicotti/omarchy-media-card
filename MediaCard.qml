@@ -5,7 +5,8 @@ import qs.Commons
 import qs.Commons as Commons
 import "MediaCardModel.js" as Model
 
-// The card the bar widget opens (design 2C). Like BarWidget.qml it only draws what
+// The card the bar widget opens (design 2C), with the plugin's settings on a
+// second screen (design 3). Like BarWidget.qml it only draws what
 // MediaCardModel.js decides; `widget` is the BarWidget that owns the card and
 // holds the player, the settings and the transport actions.
 PopupCard {
@@ -14,6 +15,7 @@ PopupCard {
   required property Item widget
 
   readonly property var player: widget.activePlayer
+  readonly property var config: widget.config
   readonly property var controls: widget.controls
   readonly property var track: widget.track
 
@@ -22,7 +24,7 @@ PopupCard {
   readonly property var players: Model.mediaPlayers(card.widget.players)
   readonly property string shownKey: Model.playerKey(player)
   readonly property var tabs: Model.tabsFor(card.players, card.shownKey)
-  readonly property var others: Model.otherPlayers(card.players, card.shownKey, true)
+  readonly property var others: Model.otherPlayers(card.players, card.shownKey, card.config.showOthers)
 
   readonly property color fg: bar ? bar.foreground : Commons.Color.foreground
   readonly property color dim: Qt.darker(fg, 1.4)
@@ -32,8 +34,17 @@ PopupCard {
     directory: Qt.resolvedUrl("i18n")
   }
 
+  // The settings screen replaces the player until the card closes.
+  property bool settingsShown: false
+  onOpenChanged: if (!open) settingsShown = false
+
   contentWidth: fittedContentWidth(Style.space(360))
-  contentHeight: fittedContentHeight(playerView.implicitHeight)
+  contentHeight: fittedContentHeight(settingsShown ? settingsView.implicitHeight : playerView.implicitHeight)
+
+  function save(key, value) {
+    var argv = Model.settingCommand(key, value)
+    if (argv.length > 0) Quickshell.execDetached(argv)
+  }
 
   function copyTitle() {
     if (card.track.title !== "") Quickshell.execDetached(["wl-copy", "--", card.track.title])
@@ -97,6 +108,7 @@ PopupCard {
   // ------------------------------------------------------------ player view
   Column {
     id: playerView
+    visible: !card.settingsShown
     width: parent.width
     spacing: Style.space(12)
 
@@ -269,6 +281,28 @@ PopupCard {
       }
     }
 
+    // The player's own volume, off by default (Settings).
+    Row {
+      visible: card.config.showVolume && card.controls.enabled.volume
+      width: parent.width
+      spacing: Style.space(10)
+
+      PlainLabel {
+        id: volumeIcon
+        anchors.verticalCenter: parent.verticalCenter
+        text: "󰕾"
+        color: card.dim
+      }
+
+      PanelSlider {
+        anchors.verticalCenter: parent.verticalCenter
+        width: parent.width - volumeIcon.width - parent.spacing
+        bar: card.bar
+        value: card.player ? card.player.volume : 0
+        onMoved: function(value) { if (card.player) card.player.volume = value }
+      }
+    }
+
     Column {
       visible: card.others.length > 0
       width: parent.width
@@ -333,7 +367,7 @@ PopupCard {
 
     Item {
       width: parent.width
-      height: openButton.implicitHeight
+      height: Math.max(openButton.implicitHeight, settingsButton.implicitHeight)
 
       CardButton {
         id: openButton
@@ -343,6 +377,114 @@ PopupCard {
         foreground: card.accent
         onClicked: card.raisePlayer()
       }
+
+      CardButton {
+        id: settingsButton
+        anchors.right: parent.right
+        text: card.strings.t("card.settings")
+        foreground: card.dim
+        onClicked: card.settingsShown = true
+      }
+    }
+  }
+
+  // ---------------------------------------------------------- settings view
+  // Each change is saved to shell.json at once; the bar hands the new settings
+  // back to the widget live, so nothing here keeps its own copy.
+  Column {
+    id: settingsView
+    visible: card.settingsShown
+    width: parent.width
+    spacing: Style.space(12)
+
+    Row {
+      spacing: Style.space(8)
+
+      CardButton {
+        anchors.verticalCenter: parent.verticalCenter
+        iconText: Commons.I18n.rightToLeft ? "󰁔" : "󰁍"
+        tooltipText: card.strings.t("settings.back")
+        onClicked: card.settingsShown = false
+      }
+
+      PlainLabel {
+        anchors.verticalCenter: parent.verticalCenter
+        text: card.strings.t("settings.title")
+        font.pixelSize: Style.font.subtitle
+        font.bold: true
+      }
+    }
+
+    PlainLabel {
+      width: parent.width
+      text: card.strings.t("settings.subtitle")
+      color: card.dim
+      font.pixelSize: Style.font.caption
+      wrapMode: Text.Wrap
+    }
+
+    PanelSectionHeader {
+      text: card.strings.t("settings.bar")
+      foreground: card.dim
+    }
+
+    ButtonGroup {
+      width: parent.width
+      focusable: false
+      foreground: card.fg
+      accent: card.accent
+      options: [
+        { value: "minimal", label: card.strings.t("style.minimal") },
+        { value: "controls", label: card.strings.t("style.controls") },
+        { value: "icon", label: card.strings.t("style.icon") }
+      ]
+      value: card.config.barStyle
+      onChanged: function(value) { card.save("barStyle", value) }
+    }
+
+    PlainLabel {
+      width: parent.width
+      wrapMode: Text.Wrap
+      color: card.dim
+      font.pixelSize: Style.font.caption
+      text: card.config.barStyle === "minimal" ? card.strings.t("style.minimalDescription")
+        : card.config.barStyle === "controls" ? card.strings.t("style.controlsDescription")
+        : card.strings.t("style.iconDescription")
+    }
+
+    Toggle {
+      width: parent.width
+      foreground: card.fg
+      accent: card.accent
+      label: card.strings.t("settings.hideWhenIdle")
+      description: card.strings.t("settings.hideWhenIdleDescription")
+      checked: card.config.hideWhenIdle
+      onClicked: card.save("hideWhenIdle", !card.config.hideWhenIdle)
+    }
+
+    PanelSectionHeader {
+      text: card.strings.t("settings.card")
+      foreground: card.dim
+    }
+
+    Toggle {
+      width: parent.width
+      foreground: card.fg
+      accent: card.accent
+      label: card.strings.t("settings.showVolume")
+      description: card.strings.t("settings.showVolumeDescription")
+      checked: card.config.showVolume
+      onClicked: card.save("showVolume", !card.config.showVolume)
+    }
+
+    Toggle {
+      width: parent.width
+      foreground: card.fg
+      accent: card.accent
+      label: card.strings.t("settings.showOthers")
+      description: card.strings.t("settings.showOthersDescription")
+      checked: card.config.showOthers
+      onClicked: card.save("showOthers", !card.config.showOthers)
     }
   }
 }
