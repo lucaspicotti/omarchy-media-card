@@ -6,9 +6,9 @@ import qs.Commons
 import qs.Commons as Commons
 import "MediaCardModel.js" as Model
 
-// The bar end of the plugin. All decisions (which player, what to show, what
-// is enabled, which cover is safe to load) come from MediaCardModel.js; this
-// file only draws them. Players are read straight from Quickshell's MPRIS
+// The bar end of the plugin; a click opens MediaCard.qml. All decisions (which
+// player, what to show, what is enabled, which cover is safe to load) come
+// from MediaCardModel.js; this file only draws them. Players are read straight from Quickshell's MPRIS
 // list: Omarchy does not hand its own media service to third-party plugins.
 BarWidget {
   id: root
@@ -31,13 +31,26 @@ BarWidget {
 
   readonly property string tooltip: Model.trackLine(track.title, track.artist)
 
-  // The shell's Bar.qml may call close(); there is no card to close yet.
-  function close() {}
+  readonly property bool hasMedia: track.hasMedia
+  property bool cardOpen: false
+  // Closed when the media ends, so it does not pop open with the next track.
+  onHasMediaChanged: if (!hasMedia) close()
+
+  // The shell's Bar.qml calls close() when another popup opens, and open() for
+  // `omarchy-shell shell summon lucaspicotti.media-card` (a keybinding).
+  readonly property bool opened: cardOpen
+  function open() {
+    if (hasMedia) cardOpen = true
+  }
+  function close() {
+    cardOpen = false
+  }
+  function toggleCard() { cardOpen = !cardOpen }
 
   readonly property color foreground: bar ? bar.barForeground : "white"
   readonly property int artSize: Math.min(Style.space(18), barSize - Style.space(6))
 
-  visible: Model.widgetVisible(track.hasMedia, config.hideWhenIdle)
+  visible: Model.widgetVisible(hasMedia, config.hideWhenIdle)
   implicitWidth: visible ? content.implicitWidth + Style.space(14) : 0
   implicitHeight: barSize
 
@@ -66,11 +79,11 @@ BarWidget {
   }
 
   // MPRIS does not push position updates; ask for a fresh value while the
-  // progress line is on screen and the track is moving.
+  // progress line or the card is on screen and the track is moving.
   Timer {
     interval: 1000
     repeat: true
-    running: progressLine.visible && root.controls.playing
+    running: (progressLine.visible || root.cardOpen) && root.controls.playing
     onTriggered: if (root.activePlayer) root.activePlayer.positionChanged()
   }
 
@@ -183,8 +196,8 @@ BarWidget {
     }
   }
 
-  // Anywhere else on the widget (design 1): left or middle click plays or
-  // pauses, right click switches players, the wheel sets the volume.
+  // Anywhere else on the widget (design 1): click opens the card, middle click
+  // plays or pauses, right click switches players, the wheel sets the volume.
   MouseArea {
     anchors.fill: parent
     z: -1
@@ -192,11 +205,20 @@ BarWidget {
     cursorShape: Qt.PointingHandCursor
     acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
     onClicked: function(mouse) {
-      if (mouse.button === Qt.RightButton) root.switchPlayer()
-      else root.playPause()
+      if (mouse.button === Qt.MiddleButton) root.playPause()
+      else if (mouse.button === Qt.RightButton) root.switchPlayer()
+      else root.toggleCard()
     }
     onWheel: function(wheel) { root.wheel(wheel.angleDelta.y) }
     onEntered: if (root.bar) root.bar.showTooltip(root, root.tooltip)
     onExited: if (root.bar) root.bar.hideTooltip(root)
+  }
+
+  MediaCard {
+    anchorItem: root
+    bar: root.bar
+    owner: root
+    widget: root
+    open: root.cardOpen && root.hasMedia
   }
 }

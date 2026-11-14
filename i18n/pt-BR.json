@@ -1,0 +1,17 @@
+{
+  "card.copyTitle": "Clique para copiar o título",
+  "card.shuffle": "Aleatório",
+  "card.previous": "Anterior",
+  "card.play": "Tocar",
+  "card.pause": "Pausar",
+  "card.next": "Próxima",
+  "card.repeat": "Repetir",
+  "card.repeatPlaylist": "Repetindo a lista",
+  "card.repeatTrack": "Repetindo esta faixa",
+  "card.alsoPlaying": "Também tocando",
+  "card.playerState": "%1 · %2",
+  "card.switchTo": "Mudar para este player",
+  "card.open": "Abrir %1",
+  "state.playing": "tocando",
+  "state.paused": "pausado"
+}

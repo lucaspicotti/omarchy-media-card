@@ -1,0 +1,17 @@
+{
+  "card.copyTitle": "Click to copy the title",
+  "card.shuffle": "Shuffle",
+  "card.previous": "Previous",
+  "card.play": "Play",
+  "card.pause": "Pause",
+  "card.next": "Next",
+  "card.repeat": "Repeat",
+  "card.repeatPlaylist": "Repeating the list",
+  "card.repeatTrack": "Repeating this track",
+  "card.alsoPlaying": "Also playing",
+  "card.playerState": "%1 · %2",
+  "card.switchTo": "Switch to this player",
+  "card.open": "Open %1",
+  "state.playing": "playing",
+  "state.paused": "paused"
+}

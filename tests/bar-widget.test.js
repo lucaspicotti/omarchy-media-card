@@ -4,26 +4,37 @@ const { readQml, block } = require('./qml-source.js')
 
 const source = readQml('BarWidget.qml')
 
-test('BarWidget não guarda estado de um card que ainda não existe', () => {
-  assert.doesNotMatch(source, /cardOpen/)
+test('BarWidget mantém close(), que o Bar.qml do Omarchy chama, e ele fecha o card', () => {
+  assert.match(block(source, 'function close()'), /cardOpen = false/)
 })
 
-test('BarWidget mantém close(), que o Bar.qml do Omarchy chama', () => {
-  assert.match(source, /function close\(\)/)
+// Bar.qml's summonBarWidget() calls open() and isBarWidgetOpen() reads opened.
+test('BarWidget atende ao summon do shell com open() e opened', () => {
+  assert.match(block(source, 'function open()'), /if \(hasMedia\) cardOpen = true/)
+  assert.match(source, /readonly property bool opened: cardOpen/)
 })
 
-test('o Timer da linha de progresso depende só da linha visível e do player tocando', () => {
+test('o card fecha quando a mídia acaba, para não reabrir sozinho na próxima', () => {
+  assert.match(source, /onHasMediaChanged: if \(!hasMedia\) close\(\)/)
+})
+
+test('o card só abre com mídia tocando', () => {
+  assert.match(block(source, 'MediaCard {'), /open: root\.cardOpen && root\.hasMedia/)
+})
+
+test('o Timer da posição roda com a linha de progresso ou o card na tela e o player tocando', () => {
   const timer = block(source, 'Timer {')
-  assert.match(timer, /running: progressLine\.visible && root\.controls\.playing\s*\n/)
+  assert.match(timer, /running: \(progressLine\.visible \|\| root\.cardOpen\) && root\.controls\.playing\s*\n/)
 })
 
-// Design 1: right click switches players, the wheel changes the player's
-// volume. Left and middle click play or pause until the card exists.
-test('clique esquerdo e do meio fazem play/pause e o direito troca de player', () => {
+// Design 1: click opens the card, middle click pauses, right click switches
+// players, the wheel changes the player's volume.
+test('clique esquerdo abre o card, o do meio faz play/pause e o direito troca de player', () => {
   const mouseArea = block(source, 'MouseArea {')
   assert.match(mouseArea, /acceptedButtons: Qt\.LeftButton \| Qt\.MiddleButton \| Qt\.RightButton/)
+  assert.match(mouseArea, /Qt\.MiddleButton\) root\.playPause\(\)/)
   assert.match(mouseArea, /Qt\.RightButton\) root\.switchPlayer\(\)/)
-  assert.match(mouseArea, /else root\.playPause\(\)/)
+  assert.match(mouseArea, /else root\.toggleCard\(\)/)
 })
 
 test('a roda do mouse muda o volume do player, no widget e nos botões', () => {
