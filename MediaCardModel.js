@@ -90,19 +90,21 @@ function widgetVisible(hasMedia, hideWhenIdle) {
 }
 
 // What each bar style draws. A: status icon and text. B: cover, title and
-// previous/play/next. C: cover, play/pause and a progress line.
-function barParts(style) {
+// previous/play/next. C: cover, play/pause and a progress line. A side bar is
+// one icon wide, so it keeps only the icon or cover and play/pause.
+function barParts(style, vertical) {
   return {
     statusIcon: style === "minimal",
     cover: style !== "minimal",
-    skip: style === "controls",
+    skip: style === "controls" && !vertical,
     playPause: style !== "minimal",
-    progress: style === "icon"
+    progress: style === "icon" && !vertical
   }
 }
 
 // The text beside the controls: "artist — title" for A, the title for B.
-function barText(style, track) {
+function barText(style, track, vertical) {
+  if (vertical) return ""
   if (style === "minimal") return limitText(trackLine(track.artist, track.title), 28)
   if (style === "controls") return limitText(track.title, 24)
   return ""
@@ -253,19 +255,37 @@ function toText(value) {
 }
 
 // Third-party plugins cannot reach Omarchy's own media service, so the plugin
-// picks the player itself, in order: the one chosen in a tab while it still
-// has a track, the one playing, the first with a track, none.
+// picks the player itself among mediaPlayers, in order: the one chosen in a
+// tab or with the right click, the one playing, the first, none.
 function activePlayer(players, preferredKey) {
-  var list = toArray(players)
-  return firstWhere(list, function(p) { return playerKey(p) === preferredKey && hasTrack(p) })
+  var list = mediaPlayers(players)
+  return firstWhere(list, function(p) { return playerKey(p) === preferredKey })
     || firstWhere(list, function(p) { return p.isPlaying })
-    || firstWhere(list, hasTrack)
+    || list[0] || null
 }
 
-// The players the card and the right click deal with: the ones with a track.
-// activePlayer skips the others, so choosing one of them would do nothing.
+// The players the bar and the card deal with: the ones with a track, leaving
+// out playerctld, which only mirrors another player (same rule as
+// MediaModel.isProxyPlayer in Omarchy's media service).
 function mediaPlayers(players) {
-  return toArray(players).filter(hasTrack)
+  return toArray(players).filter(function(player) { return hasTrack(player) && !isProxyPlayer(player) })
+}
+
+function isProxyPlayer(player) {
+  var dbusName = String(player.dbusName || "").toLowerCase()
+  var desktopEntry = String(player.desktopEntry || "").toLowerCase()
+  return dbusName.indexOf("playerctld") !== -1 || desktopEntry === "playerctld"
+}
+
+// The first player with a track that is playing, or "".
+function playingPlayerKey(players) {
+  return playerKey(firstWhere(mediaPlayers(players), function(p) { return p.isPlaying }))
+}
+
+// The chosen player stays on until another one starts playing; then the bar
+// follows what plays. Called when playingPlayerKey changes.
+function preferredKeyAfter(preferredKey, playingKey) {
+  return playingKey !== "" && playingKey !== preferredKey ? "" : preferredKey
 }
 
 // Right click on the bar: the player after the current one, wrapping around.

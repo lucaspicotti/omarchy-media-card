@@ -12,6 +12,17 @@ test('barParts mostra em cada estilo só as partes dele', () => {
   assert.deepStrictEqual(plain(Model.barParts('icon')), { statusIcon: false, cover: true, skip: false, playPause: true, progress: true })
 })
 
+// A side bar is one icon wide: no text, no skip buttons, no progress line.
+test('barParts numa barra vertical deixa só o ícone ou a capa e o play/pause', () => {
+  assert.deepStrictEqual(plain(Model.barParts('minimal', true)), { statusIcon: true, cover: false, skip: false, playPause: false, progress: false })
+  assert.deepStrictEqual(plain(Model.barParts('controls', true)), { statusIcon: false, cover: true, skip: false, playPause: true, progress: false })
+  assert.deepStrictEqual(plain(Model.barParts('icon', true)), { statusIcon: false, cover: true, skip: false, playPause: true, progress: false })
+})
+
+test('barText não mostra texto numa barra vertical', () => {
+  for (const style of ['minimal', 'controls', 'icon']) assert.strictEqual(Model.barText(style, TRACK, true), '', style)
+})
+
 test('barText mostra "artista — título" no minimal e só o título no controls', () => {
   assert.strictEqual(Model.barText('minimal', TRACK), 'Khruangbin — Maria Tambiên')
   assert.strictEqual(Model.barText('controls', TRACK), 'Maria Tambiên')

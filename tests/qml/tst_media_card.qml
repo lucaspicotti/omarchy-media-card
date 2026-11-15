@@ -2,6 +2,7 @@ import QtQuick
 import QtTest
 import Quickshell
 import Quickshell.Services.Mpris
+import qs.Commons as Commons
 
 // Loads the real BarWidget.qml, which builds the real MediaCard.qml, over the
 // stand-ins in stubs/, and drives both with the mouse.
@@ -47,6 +48,7 @@ TestCase {
 
   function cleanup() {
     Mpris.players.values = []
+    Commons.I18n.rightToLeft = false
   }
 
   // ------------------------------------------------------------- helpers
@@ -61,7 +63,8 @@ TestCase {
     found = found || []
     if (!item) return found
     if (predicate(item)) found.push(item)
-    var kids = item.children || []
+    // data, not children: a ToolTip is a child object but not an Item.
+    var kids = item.data || []
     for (var i = 0; i < kids.length; i++) findAll(kids[i], predicate, found)
     return found
   }
@@ -373,5 +376,117 @@ TestCase {
     compare(lastCommand(), saveCommand("barStyle", "\"controls\""))
     mouseClick(chip("icon"))
     compare(Quickshell.executed.length, 1, "o estilo atual não grava de novo")
+  }
+
+  // ----------------------------------------------------- review findings
+  function barButton(icon) {
+    return find(widget, function(item) { return item.visible && item.wheelMoved !== undefined && (!icon || item.text === icon) })
+  }
+
+  function test_click_without_media_does_not_leave_the_card_waiting() {
+    widget.settings = { hideWhenIdle: false }
+    spotify.trackTitle = ""
+    spotify.trackArtist = ""
+    verify(widget.visible)
+    clickWidget()
+    verify(!widget.opened)
+    spotify.trackTitle = "Maria Tambiên"
+    verify(!card().visible, "o card não abre sozinho quando a mídia chega")
+  }
+
+  function test_hovering_the_widget_shows_the_track() {
+    mouseMove(widget, 2, widget.height / 2)
+    compare(widget.bar.shownTooltip, "Maria Tambiên — Khruangbin")
+  }
+
+  function test_hovering_the_card_title_shows_the_copy_hint() {
+    openCard()
+    var title = shownText("Maria Tambiên")
+    mouseMove(title)
+    var tip = find(title, function(item) { return item.delay !== undefined && item.text === "Click to copy the title" })
+    verify(tip)
+    tryVerify(function() { return tip.visible })
+  }
+
+  function test_right_click_over_a_bar_button_switches_players() {
+    Mpris.players.values = [spotify, chrome]
+    var play = barButton("󰏤")
+    mouseClick(play, play.width / 2, play.height / 2, Qt.RightButton)
+    compare(widget.activePlayer, chrome)
+    compare(spotify.isPlaying, true, "não fez play/pause")
+  }
+
+  function test_middle_click_over_a_bar_button_plays_or_pauses() {
+    widget.settings = { barStyle: "controls" }
+    var next = barButton("󰒭")
+    mouseClick(next, next.width / 2, next.height / 2, Qt.MiddleButton)
+    compare(spotify.nextCalls, 0, "não pulou a faixa")
+    compare(spotify.isPlaying, false)
+  }
+
+  function test_right_click_works_over_a_button_the_player_cannot_use() {
+    widget.settings = { barStyle: "controls" }
+    spotify.canGoNext = false
+    Mpris.players.values = [spotify, chrome]
+    var next = barButton("󰒭")
+    mouseClick(next, next.width / 2, next.height / 2)
+    compare(spotify.nextCalls, 0)
+    mouseClick(next, next.width / 2, next.height / 2, Qt.RightButton)
+    compare(widget.activePlayer, chrome)
+  }
+
+  function test_side_bar_stacks_the_widget_without_text() {
+    widget.bar.barSize = 28
+    widget.bar.vertical = true
+    for (var style of ["minimal", "controls", "icon"]) {
+      widget.settings = { barStyle: style }
+      settle()
+      compare(widget.implicitWidth, 28, style)
+      var cardItem = card()
+      var outside = findAll(widget, function(item) {
+        if (!item.visible || item.width === undefined || item === widget) return false
+        for (var p = item; p; p = p.parent) if (p === cardItem) return false
+        var at = item.mapToItem(widget, 0, 0)
+        return at.x < 0 || at.x + item.width > widget.width + 0.5
+      })
+      compare(outside.length, 0, style + ": " + outside.map(String).join(", "))
+      verify(!find(widget, function(item) {
+        return item.visible && item.textFormat !== undefined && String(item.text).indexOf("Khruangbin") !== -1
+      }), style + ": sem texto")
+      verify(!barButton("󰒮") && !barButton("󰒭"), style + ": sem anterior e próxima")
+      verify(!find(widget, function(item) { return item.visible && item.height === Math.max(1, 2) && item.radius !== undefined && item.width > 0 && item.children.length === 1 }), style + ": sem linha de progresso")
+    }
+  }
+
+  function test_times_read_left_to_right_in_rtl() {
+    Commons.I18n.rightToLeft = true
+    openCard()
+    var position = shownText("1:52")
+    var length = shownText("3:14")
+    verify(position.mapToItem(card(), 0, 0).x < length.mapToItem(card(), 0, 0).x)
+  }
+
+  function test_chosen_player_gives_way_when_another_starts_playing() {
+    spotify.isPlaying = false
+    Mpris.players.values = [spotify, chrome]
+    openCard()
+    mouseClick(chip(chrome.dbusName))
+    compare(widget.activePlayer, chrome)
+    spotify.isPlaying = true
+    compare(widget.activePlayer, spotify)
+  }
+
+  function test_clicking_the_shown_tab_does_not_pin_it() {
+    Mpris.players.values = [spotify, chrome]
+    openCard()
+    mouseClick(chip(spotify.dbusName))
+    compare(widget.preferredKey, "")
+  }
+
+  function test_another_popup_closes_the_card() {
+    openCard()
+    widget.bar.requestPopout({ close: function() {} })
+    verify(!card().visible)
+    verify(!widget.opened)
   }
 }

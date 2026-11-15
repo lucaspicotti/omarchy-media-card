@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Layouts
 import Quickshell
 import Quickshell.Services.Mpris
 import qs.Ui
@@ -8,21 +9,25 @@ import "MediaCardModel.js" as Model
 
 // The bar end of the plugin; a click opens MediaCard.qml. All decisions (which
 // player, what to show, what is enabled, which cover is safe to load) come
-// from MediaCardModel.js; this file only draws them. Players are read straight from Quickshell's MPRIS
-// list: Omarchy does not hand its own media service to third-party plugins.
+// from MediaCardModel.js; this file only draws them. Players are read straight
+// from Quickshell's MPRIS list: Omarchy does not hand its own media service to
+// third-party plugins.
 BarWidget {
   id: root
   moduleName: "lucaspicotti.media-card"
 
   readonly property var players: Mpris.players ? Mpris.players.values : []
-  // Set from the card's tabs and the right click; the model drops it once that
-  // player has no track.
+  // Set from the card's tabs and the right click; it gives way once another
+  // player starts playing (Model.preferredKeyAfter), and the model skips it
+  // once that player has no track.
   property string preferredKey: ""
+  readonly property string playingKey: Model.playingPlayerKey(players)
+  onPlayingKeyChanged: preferredKey = Model.preferredKeyAfter(preferredKey, playingKey)
   readonly property var activePlayer: Model.activePlayer(players, preferredKey)
 
   // settingsFrom fills in the defaults, so the raw map goes in as it is.
   readonly property var config: Model.settingsFrom(settings)
-  readonly property var parts: Model.barParts(config.barStyle)
+  readonly property var parts: Model.barParts(config.barStyle, vertical)
 
   readonly property var controls: Model.controlsFor(activePlayer)
   readonly property var track: Model.nowPlaying(activePlayer)
@@ -45,14 +50,22 @@ BarWidget {
   function close() {
     cardOpen = false
   }
-  function toggleCard() { cardOpen = !cardOpen }
+  // Through open(), so a click with nothing playing leaves nothing waiting.
+  function toggleCard() {
+    if (cardOpen) close()
+    else open()
+  }
+
+  // The bar shows its tooltip only for a target that says it is hovered.
+  readonly property bool tooltipHovered: visible && widgetMouse.containsMouse
 
   readonly property color foreground: bar ? bar.barForeground : "white"
   readonly property int artSize: Math.min(Style.space(18), barSize - Style.space(6))
 
   visible: Model.widgetVisible(hasMedia, config.hideWhenIdle)
-  implicitWidth: visible ? content.implicitWidth + Style.space(14) : 0
-  implicitHeight: barSize
+  // A side bar is barSize wide; the content stacks down it instead.
+  implicitWidth: !visible ? 0 : vertical ? barSize : content.implicitWidth + Style.space(14)
+  implicitHeight: vertical ? content.implicitHeight + Style.space(14) : barSize
 
   function playPause() {
     var method = Model.playPauseMethod(activePlayer)
@@ -92,13 +105,13 @@ BarWidget {
     color: root.foreground
     font.family: root.bar ? root.bar.fontFamily : ""
     font.pixelSize: Style.font.body
-    anchors.verticalCenter: parent ? parent.verticalCenter : undefined
+    Layout.alignment: Qt.AlignCenter
   }
 
   component Cover: Item {
-    width: root.artSize
-    height: root.artSize
-    anchors.verticalCenter: parent ? parent.verticalCenter : undefined
+    implicitWidth: root.artSize
+    implicitHeight: root.artSize
+    Layout.alignment: Qt.AlignCenter
 
     SizedImage {
       anchors.fill: parent
@@ -108,31 +121,39 @@ BarWidget {
     }
 
     Glyph {
-      anchors.horizontalCenter: parent.horizontalCenter
+      anchors.centerIn: parent
       visible: root.track.artUrl === ""
       text: "󰝚"
     }
   }
 
   // The shell's own bar button: press feedback, optical centring and the
-  // bar's click-target registration come with it.
+  // bar's click-target registration come with it. It takes all three mouse
+  // buttons, so right and middle click do here what they do on the rest of the
+  // widget; a left click runs the button's action when the player allows it.
   component TransportButton: WidgetButton {
     property bool available: true
+    signal triggered()
     bar: root.bar
     foreground: root.foreground
-    interactive: available
     dimmed: !available
     tooltipText: root.tooltip
+    Layout.alignment: Qt.AlignCenter
+    onPressed: function(button) {
+      if (button === Qt.RightButton) root.switchPlayer()
+      else if (button === Qt.MiddleButton) root.playPause()
+      else if (available) triggered()
+    }
     onWheelMoved: function(delta) { root.wheel(delta) }
   }
 
-  // Row cannot align children vertically on its own; each child centres itself
-  // in the bar height instead (see Glyph and Cover).
-  Row {
+  // One row along a top or bottom bar, one column down a side bar.
+  GridLayout {
     id: content
     anchors.centerIn: parent
-    height: root.barSize
-    spacing: Style.space(6)
+    flow: root.vertical ? GridLayout.TopToBottom : GridLayout.LeftToRight
+    rowSpacing: Style.space(6)
+    columnSpacing: Style.space(6)
     // Transport controls keep their order in right-to-left languages.
     LayoutMirroring.enabled: false
     LayoutMirroring.childrenInherit: true
@@ -149,7 +170,7 @@ BarWidget {
     }
 
     Glyph {
-      text: Model.barText(root.config.barStyle, root.track)
+      text: Model.barText(root.config.barStyle, root.track, root.vertical)
       visible: text !== ""
     }
 
@@ -157,7 +178,7 @@ BarWidget {
       visible: root.parts.skip
       available: root.controls.enabled.previous
       text: "󰒮"
-      onPressed: root.previous()
+      onTriggered: root.previous()
     }
 
     TransportButton {
@@ -165,14 +186,14 @@ BarWidget {
       available: root.controls.enabled.playPause
       text: root.controls.playPauseIcon
       foreground: Commons.Color.accent
-      onPressed: root.playPause()
+      onTriggered: root.playPause()
     }
 
     TransportButton {
       visible: root.parts.skip
       available: root.controls.enabled.next
       text: "󰒭"
-      onPressed: root.next()
+      onTriggered: root.next()
     }
   }
 
@@ -199,6 +220,7 @@ BarWidget {
   // Anywhere else on the widget (design 1): click opens the card, middle click
   // plays or pauses, right click switches players, the wheel sets the volume.
   MouseArea {
+    id: widgetMouse
     anchors.fill: parent
     z: -1
     hoverEnabled: true

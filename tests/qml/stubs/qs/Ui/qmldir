@@ -10,3 +10,4 @@ Toggle 1.0 Toggle.qml
 PanelSlider 1.0 PanelSlider.qml
 PanelSeparator 1.0 PanelSeparator.qml
 PanelSectionHeader 1.0 PanelSectionHeader.qml
+PanelToolTip 1.0 PanelToolTip.qml

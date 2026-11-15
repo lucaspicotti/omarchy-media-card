@@ -37,3 +37,36 @@ test('activePlayer escolhe o primeiro player com faixa quando nada está tocando
   assert.strictEqual(Model.activePlayer([IDLE_CHROME, SPOTIFY], ''), SPOTIFY)
   assert.strictEqual(Model.activePlayer([IDLE_CHROME, artistOnly], ''), artistOnly)
 })
+
+// A browser playing something without metadata must not hide a paused player
+// that has a track: the widget would vanish while there is media to show.
+test('activePlayer não escolhe um player tocando sem faixa', () => {
+  const playingNoTrack = { dbusName: 'org.mpris.MediaPlayer2.firefox.instance9', identity: 'Firefox', isPlaying: true }
+  assert.strictEqual(Model.activePlayer([playingNoTrack, SPOTIFY], ''), SPOTIFY)
+})
+
+// playerctld mirrors whichever player is active; Omarchy's media service
+// leaves it out the same way (MediaModel.isProxyPlayer).
+test('activePlayer ignora o proxy playerctld', () => {
+  const proxy = { dbusName: 'org.mpris.MediaPlayer2.playerctld', identity: 'playerctld', trackTitle: 'Signal from the Noise', isPlaying: true }
+  assert.strictEqual(Model.activePlayer([proxy, SPOTIFY], ''), SPOTIFY)
+  assert.strictEqual(Model.activePlayer([proxy, SPOTIFY], proxy.dbusName), SPOTIFY)
+})
+
+// The chosen player stays on until another one starts playing, like
+// Omarchy's media service, which keeps its preferred player only while it plays.
+test('preferredKeyAfter esquece o escolhido quando outro player começa a tocar', () => {
+  assert.strictEqual(Model.preferredKeyAfter(SPOTIFY.dbusName, CHROME.dbusName), '')
+})
+
+test('preferredKeyAfter mantém o escolhido quando é ele que toca ou quando nada toca', () => {
+  assert.strictEqual(Model.preferredKeyAfter(SPOTIFY.dbusName, SPOTIFY.dbusName), SPOTIFY.dbusName)
+  assert.strictEqual(Model.preferredKeyAfter(SPOTIFY.dbusName, ''), SPOTIFY.dbusName)
+})
+
+test('playingPlayerKey é o primeiro player com faixa que está tocando', () => {
+  const playingNoTrack = { dbusName: 'org.mpris.MediaPlayer2.firefox.instance9', isPlaying: true }
+  assert.strictEqual(Model.playingPlayerKey([playingNoTrack, SPOTIFY, CHROME]), CHROME.dbusName)
+  assert.strictEqual(Model.playingPlayerKey([SPOTIFY]), '')
+  assert.strictEqual(Model.playingPlayerKey(null), '')
+})

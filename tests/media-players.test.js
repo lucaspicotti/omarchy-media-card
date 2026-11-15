@@ -24,3 +24,9 @@ test('mediaPlayers devolve lista vazia sem lista de players', () => {
     assert.deepStrictEqual(Array.from(Model.mediaPlayers(players)), [], `players: ${players}`)
   }
 })
+
+test('mediaPlayers deixa de fora o proxy playerctld', () => {
+  const proxy = { dbusName: 'org.mpris.MediaPlayer2.playerctld', trackTitle: 'Maria Tambiên', isPlaying: true }
+  const byEntry = { dbusName: 'org.mpris.MediaPlayer2.other', desktopEntry: 'playerctld', trackTitle: 'x' }
+  assert.deepStrictEqual(Array.from(Model.mediaPlayers([proxy, SPOTIFY, byEntry])), [SPOTIFY])
+})

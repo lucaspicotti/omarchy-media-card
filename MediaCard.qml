@@ -136,7 +136,9 @@ PopupCard {
       accent: card.accent
       options: card.tabs
       value: card.shownKey
-      onChanged: function(value) { card.widget.preferredKey = value }
+      // ButtonGroup also emits for the chip already selected; picking the player
+      // on show must not pin it.
+      onChanged: function(value) { if (value !== card.shownKey) card.widget.preferredKey = value }
     }
 
     Row {
@@ -172,12 +174,18 @@ PopupCard {
           maximumLineCount: 2
 
           MouseArea {
+            id: titleMouse
             anchors.fill: parent
             cursorShape: Qt.IBeamCursor
             hoverEnabled: true
             onClicked: card.run(Model.copyCommand(card.track.title))
-            onEntered: if (card.bar) card.bar.showTooltip(parent, card.strings.t("card.copyTitle"))
-            onExited: if (card.bar) card.bar.hideTooltip(parent)
+
+            // The bar's shared tooltip only draws over the bar window; the
+            // card is a popup of its own, so it brings its own.
+            PanelToolTip {
+              visible: titleMouse.containsMouse
+              text: card.strings.t("card.copyTitle")
+            }
           }
         }
 
@@ -222,6 +230,7 @@ PopupCard {
         height: position.implicitHeight
         // Times read left to right in every language, like the progress line.
         LayoutMirroring.enabled: false
+        LayoutMirroring.childrenInherit: true
 
         Caption {
           id: position
@@ -441,7 +450,7 @@ PopupCard {
         return { value: style, label: card.strings.t(Model.barStyleLabels(style).label) }
       })
       value: card.config.barStyle
-      onChanged: function(value) { card.save("barStyle", value) }
+      onChanged: function(value) { if (value !== card.config.barStyle) card.save("barStyle", value) }
     }
 
     Caption {

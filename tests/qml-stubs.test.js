@@ -67,13 +67,16 @@ test('o FakePlayer só tem propriedades e métodos do MprisPlayer', (t) => {
   }
 })
 
-// The fake bar stands for the shell's Bar.qml, which hands itself to every
-// bar widget as `bar`.
-test('o FakeBar só tem o que o Bar.qml do Omarchy tem', (t) => {
-  const real = path.join(shell, 'plugins', 'bar', 'Bar.qml')
+// A third-party widget does not get Bar.qml as `bar` but Ui/PluginBarApi.qml
+// (Bar.qml's pluginBarApiFor), a narrower API; the fake must not offer more.
+// shownTooltip is the fake's own record of what the bar would show.
+test('o FakeBar só tem o que o PluginBarApi do Omarchy tem', (t) => {
+  const real = path.join(shell, 'Ui', 'PluginBarApi.qml')
   if (!fs.existsSync(real)) return t.skip(`Omarchy não encontrado em ${shell}`)
   const realNames = declared(fs.readFileSync(real, 'utf8'))
+  const ownRecords = new Set(['shownTooltip'])
   for (const name of declared(fs.readFileSync(path.join(__dirname, 'qml', 'FakeBar.qml'), 'utf8'))) {
-    assert.ok(realNames.has(name), `Bar.qml não tem ${name}`)
+    if (ownRecords.has(name)) continue
+    assert.ok(realNames.has(name), `PluginBarApi.qml não tem ${name}`)
   }
 })

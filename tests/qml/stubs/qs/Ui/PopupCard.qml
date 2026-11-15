@@ -1,7 +1,10 @@
 import QtQuick
+import qs.Commons as Commons
 
 // The real card is a PopupWindow under the bar; here it is an item just below
-// the widget, so the test window holds both and clicks reach either.
+// the widget, so the test window holds both and clicks reach either. Like the
+// real one it claims the bar's single popout while open and reads mirrored in
+// right-to-left languages.
 Item {
   id: root
   required property Item anchorItem
@@ -21,6 +24,12 @@ Item {
 
   default property alias contentItem: contentHolder.children
 
+  onOpenChanged: {
+    if (!bar) return
+    if (open) bar.requestPopout(owner || root)
+    else if (bar.activePopout === (owner || root)) bar.releasePopout(owner || root)
+  }
+
   visible: open
   y: anchorItem ? anchorItem.height + 4 : 0
   width: contentWidth
@@ -30,5 +39,7 @@ Item {
     id: contentHolder
     anchors.fill: parent
     anchors.margins: root.padding
+    LayoutMirroring.enabled: Commons.I18n.rightToLeft
+    LayoutMirroring.childrenInherit: true
   }
 }
