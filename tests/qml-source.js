@@ -1,4 +1,4 @@
-// There is no QML runtime in the tests, so these helpers read QML as text.
+// Helpers that read QML as text, for the rules node:test checks in the source.
 const fs = require('node:fs')
 const path = require('node:path')
 const assert = require('node:assert')

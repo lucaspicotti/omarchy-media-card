@@ -163,7 +163,7 @@ BarWidget {
     TransportButton {
       visible: root.parts.playPause
       available: root.controls.enabled.playPause
-      text: root.controls.playing ? "󰏤" : "󰐊"
+      text: root.controls.playPauseIcon
       foreground: Commons.Color.accent
       onPressed: root.playPause()
     }

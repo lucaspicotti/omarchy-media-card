@@ -38,17 +38,26 @@ test('controlsFor habilita play/pause com canPlay ou canPause, sem canTogglePlay
   assert.strictEqual(Model.controlsFor({ canPause: true }).enabled.playPause, true)
 })
 
-test('controlsFor informa se está tocando e se o aleatório está ligado', () => {
+test('controlsFor informa se está tocando e se o aleatório está ligado, com o ícone de cada estado', () => {
   const on = Model.controlsFor(Object.assign({}, FULL, { isPlaying: true, shuffle: true }))
-  assert.deepStrictEqual([on.playing, on.shuffleOn], [true, true])
+  assert.deepStrictEqual([on.playing, on.playPauseIcon, on.playPauseLabel], [true, '󰏤', 'card.pause'])
+  assert.deepStrictEqual([on.shuffleOn, on.shuffleIcon], [true, '󰒝'])
   const off = Model.controlsFor(Object.assign({}, FULL, { isPlaying: false, shuffle: false }))
-  assert.deepStrictEqual([off.playing, off.shuffleOn], [false, false])
+  assert.deepStrictEqual([off.playing, off.playPauseIcon, off.playPauseLabel], [false, '󰐊', 'card.play'])
+  assert.deepStrictEqual([off.shuffleOn, off.shuffleIcon], [false, '󰒞'])
 })
 
 // MprisLoopState in Quickshell's qmltypes: None, Track, Playlist (0, 1, 2).
-test('controlsFor traduz o loopState do Quickshell para o modo de repetição', () => {
-  const modes = [0, 1, 2].map((loopState) => Model.controlsFor(Object.assign({}, FULL, { loopState })).repeatMode)
-  assert.deepStrictEqual(modes, ['none', 'track', 'playlist'])
+test('controlsFor traduz o loopState do Quickshell para o modo, o ícone e o texto da repetição', () => {
+  const repeat = [0, 1, 2].map((loopState) => {
+    const controls = Model.controlsFor(Object.assign({}, FULL, { loopState }))
+    return [controls.repeatMode, controls.repeatIcon, controls.repeatLabel]
+  })
+  assert.deepStrictEqual(repeat, [
+    ['none', '󰑗', 'card.repeat'],
+    ['track', '󰑘', 'card.repeatTrack'],
+    ['playlist', '󰑖', 'card.repeatPlaylist']
+  ])
 })
 
 test('controlsFor usa "none" para loopState ausente ou desconhecido', () => {
@@ -63,8 +72,13 @@ test('controlsFor desabilita tudo quando não há player', () => {
     assert.deepStrictEqual(plain(Model.controlsFor(player)), {
       enabled: NONE_ENABLED,
       playing: false,
+      playPauseIcon: '󰐊',
+      playPauseLabel: 'card.play',
       shuffleOn: false,
-      repeatMode: 'none'
+      shuffleIcon: '󰒞',
+      repeatMode: 'none',
+      repeatIcon: '󰑗',
+      repeatLabel: 'card.repeat'
     }, `player: ${player}`)
   }
 })

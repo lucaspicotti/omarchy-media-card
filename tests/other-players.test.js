@@ -8,11 +8,11 @@ const SPOTIFY = { dbusName: 'org.mpris.MediaPlayer2.spotify', identity: 'Spotify
 const CHROME = { dbusName: 'org.mpris.MediaPlayer2.chromium.instance4821', identity: 'Chromium', trackTitle: 'Vídeo do YouTube', isPlaying: false }
 const MPV = { dbusName: 'org.mpris.MediaPlayer2.mpv', identity: 'mpv', trackTitle: 'podcast-ep42.mp3', isPlaying: true }
 
-test('otherPlayers lista os outros players com chave, nome, título, estado e capa', () => {
+test('otherPlayers lista os outros players com chave, nome, título, texto do estado e capa', () => {
   const others = plain(Model.otherPlayers([SPOTIFY, CHROME, MPV], SPOTIFY.dbusName, true))
   assert.deepStrictEqual(others, [
-    { key: 'org.mpris.MediaPlayer2.chromium.instance4821', label: 'Chromium', title: 'Vídeo do YouTube', state: 'paused', artUrl: '' },
-    { key: 'org.mpris.MediaPlayer2.mpv', label: 'mpv', title: 'podcast-ep42.mp3', state: 'playing', artUrl: '' }
+    { key: 'org.mpris.MediaPlayer2.chromium.instance4821', label: 'Chromium', title: 'Vídeo do YouTube', stateLabel: 'state.paused', artUrl: '' },
+    { key: 'org.mpris.MediaPlayer2.mpv', label: 'mpv', title: 'podcast-ep42.mp3', stateLabel: 'state.playing', artUrl: '' }
   ])
 })
 
@@ -23,7 +23,7 @@ test('otherPlayers só passa adiante capas seguras', () => {
   assert.deepStrictEqual([others[0].artUrl, others[1].artUrl], ['https://i.ytimg.com/vi/x/hq.jpg', ''])
 })
 
-// Matches tabsFor: with no valid selection the first player is the one shown.
+// With no valid selection the first player is the one shown.
 test('otherPlayers deixa de fora o primeiro player quando o selecionado não está na lista', () => {
   for (const selectedKey of ['org.mpris.MediaPlayer2.fechado', '', null]) {
     const others = plain(Model.otherPlayers([SPOTIFY, CHROME, MPV], selectedKey, true))

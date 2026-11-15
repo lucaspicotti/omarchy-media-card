@@ -23,7 +23,7 @@ PopupCard {
   // one of them would do nothing.
   readonly property var players: Model.mediaPlayers(card.widget.players)
   readonly property string shownKey: Model.playerKey(player)
-  readonly property var tabs: Model.tabsFor(card.players, card.shownKey)
+  readonly property var tabs: Model.tabsFor(card.players)
   readonly property var others: Model.otherPlayers(card.players, card.shownKey, card.config.showOthers)
 
   readonly property color fg: bar ? bar.foreground : Commons.Color.foreground
@@ -41,13 +41,13 @@ PopupCard {
   contentWidth: fittedContentWidth(Style.space(360))
   contentHeight: fittedContentHeight(settingsShown ? settingsView.implicitHeight : playerView.implicitHeight)
 
-  function save(key, value) {
-    var argv = Model.settingCommand(key, value)
+  // Runs an argv the model built; an empty one means there is nothing to run.
+  function run(argv) {
     if (argv.length > 0) Quickshell.execDetached(argv)
   }
 
-  function copyTitle() {
-    if (card.track.title !== "") Quickshell.execDetached(["wl-copy", "--", card.track.title])
+  function save(key, value) {
+    run(Model.settingCommand(key, value))
   }
 
   function raisePlayer() {
@@ -70,6 +70,11 @@ PopupCard {
     font.family: Style.font.family
     font.pixelSize: Style.font.body
     elide: Text.ElideRight
+  }
+
+  component Caption: PlainLabel {
+    color: card.dim
+    font.pixelSize: Style.font.caption
   }
 
   component CoverArt: BorderSurface {
@@ -98,6 +103,16 @@ PopupCard {
     }
   }
 
+  // One boolean setting: shows the saved value and saves the opposite.
+  component SettingToggle: Toggle {
+    required property string key
+    width: parent.width
+    foreground: card.fg
+    accent: card.accent
+    checked: card.config[key]
+    onClicked: card.save(key, !card.config[key])
+  }
+
   component CardButton: Button {
     property bool available: true
     foreground: card.fg
@@ -119,7 +134,7 @@ PopupCard {
       focusable: false
       foreground: card.fg
       accent: card.accent
-      options: card.tabs.map(function(tab) { return { value: tab.key, label: tab.label } })
+      options: card.tabs
       value: card.shownKey
       onChanged: function(value) { card.widget.preferredKey = value }
     }
@@ -160,7 +175,7 @@ PopupCard {
             anchors.fill: parent
             cursorShape: Qt.IBeamCursor
             hoverEnabled: true
-            onClicked: card.copyTitle()
+            onClicked: card.run(Model.copyCommand(card.track.title))
             onEntered: if (card.bar) card.bar.showTooltip(parent, card.strings.t("card.copyTitle"))
             onExited: if (card.bar) card.bar.hideTooltip(parent)
           }
@@ -208,19 +223,15 @@ PopupCard {
         // Times read left to right in every language, like the progress line.
         LayoutMirroring.enabled: false
 
-        PlainLabel {
+        Caption {
           id: position
           anchors.left: parent.left
           text: Model.formatTime(card.player ? card.player.position : 0)
-          color: card.dim
-          font.pixelSize: Style.font.caption
         }
 
-        PlainLabel {
+        Caption {
           anchors.right: parent.right
           text: Model.formatTime(card.player ? card.player.length : 0)
-          color: card.dim
-          font.pixelSize: Style.font.caption
         }
       }
     }
@@ -235,7 +246,7 @@ PopupCard {
       CardButton {
         anchors.verticalCenter: parent.verticalCenter
         available: card.controls.enabled.shuffle
-        iconText: card.controls.shuffleOn ? "󰒝" : "󰒞"
+        iconText: card.controls.shuffleIcon
         foreground: card.controls.shuffleOn ? card.accent : card.fg
         tooltipText: card.strings.t("card.shuffle")
         onClicked: card.toggleShuffle()
@@ -252,12 +263,12 @@ PopupCard {
       CardButton {
         anchors.verticalCenter: parent.verticalCenter
         available: card.controls.enabled.playPause
-        iconText: card.controls.playing ? "󰏤" : "󰐊"
+        iconText: card.controls.playPauseIcon
         iconSize: Style.font.iconLarge
         horizontalPadding: Style.spacing.panelGap
         foreground: card.accent
         bordered: true
-        tooltipText: card.controls.playing ? card.strings.t("card.pause") : card.strings.t("card.play")
+        tooltipText: card.strings.t(card.controls.playPauseLabel)
         onClicked: card.widget.playPause()
       }
 
@@ -272,11 +283,9 @@ PopupCard {
       CardButton {
         anchors.verticalCenter: parent.verticalCenter
         available: card.controls.enabled.repeat
-        iconText: card.controls.repeatMode === "track" ? "󰑘" : card.controls.repeatMode === "playlist" ? "󰑖" : "󰑗"
+        iconText: card.controls.repeatIcon
         foreground: card.controls.repeatMode === "none" ? card.fg : card.accent
-        tooltipText: card.controls.repeatMode === "track" ? card.strings.t("card.repeatTrack")
-          : card.controls.repeatMode === "playlist" ? card.strings.t("card.repeatPlaylist")
-          : card.strings.t("card.repeat")
+        tooltipText: card.strings.t(card.controls.repeatLabel)
         onClicked: card.cycleRepeat()
       }
     }
@@ -345,12 +354,9 @@ PopupCard {
               font.pixelSize: Style.font.bodySmall
             }
 
-            PlainLabel {
+            Caption {
               width: parent.width
-              text: card.strings.t("card.playerState").arg(otherRow.modelData.label).arg(otherRow.modelData.state === "playing"
-                ? card.strings.t("state.playing") : card.strings.t("state.paused"))
-              color: card.dim
-              font.pixelSize: Style.font.caption
+              text: card.strings.t("card.playerState").arg(otherRow.modelData.label).arg(card.strings.t(otherRow.modelData.stateLabel))
             }
           }
 
@@ -415,11 +421,9 @@ PopupCard {
       }
     }
 
-    PlainLabel {
+    Caption {
       width: parent.width
       text: card.strings.t("settings.subtitle")
-      color: card.dim
-      font.pixelSize: Style.font.caption
       wrapMode: Text.Wrap
     }
 
@@ -433,33 +437,23 @@ PopupCard {
       focusable: false
       foreground: card.fg
       accent: card.accent
-      options: [
-        { value: "minimal", label: card.strings.t("style.minimal") },
-        { value: "controls", label: card.strings.t("style.controls") },
-        { value: "icon", label: card.strings.t("style.icon") }
-      ]
+      options: Model.BAR_STYLES.map(function(style) {
+        return { value: style, label: card.strings.t(Model.barStyleLabels(style).label) }
+      })
       value: card.config.barStyle
       onChanged: function(value) { card.save("barStyle", value) }
     }
 
-    PlainLabel {
+    Caption {
       width: parent.width
       wrapMode: Text.Wrap
-      color: card.dim
-      font.pixelSize: Style.font.caption
-      text: card.config.barStyle === "minimal" ? card.strings.t("style.minimalDescription")
-        : card.config.barStyle === "controls" ? card.strings.t("style.controlsDescription")
-        : card.strings.t("style.iconDescription")
+      text: card.strings.t(Model.barStyleLabels(card.config.barStyle).description)
     }
 
-    Toggle {
-      width: parent.width
-      foreground: card.fg
-      accent: card.accent
+    SettingToggle {
+      key: "hideWhenIdle"
       label: card.strings.t("settings.hideWhenIdle")
       description: card.strings.t("settings.hideWhenIdleDescription")
-      checked: card.config.hideWhenIdle
-      onClicked: card.save("hideWhenIdle", !card.config.hideWhenIdle)
     }
 
     PanelSectionHeader {
@@ -467,24 +461,16 @@ PopupCard {
       foreground: card.dim
     }
 
-    Toggle {
-      width: parent.width
-      foreground: card.fg
-      accent: card.accent
+    SettingToggle {
+      key: "showVolume"
       label: card.strings.t("settings.showVolume")
       description: card.strings.t("settings.showVolumeDescription")
-      checked: card.config.showVolume
-      onClicked: card.save("showVolume", !card.config.showVolume)
     }
 
-    Toggle {
-      width: parent.width
-      foreground: card.fg
-      accent: card.accent
+    SettingToggle {
+      key: "showOthers"
       label: card.strings.t("settings.showOthers")
       description: card.strings.t("settings.showOthersDescription")
-      checked: card.config.showOthers
-      onClicked: card.save("showOthers", !card.config.showOthers)
     }
   }
 }

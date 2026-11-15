@@ -3,6 +3,7 @@ const assert = require('node:assert')
 const fs = require('node:fs')
 const path = require('node:path')
 const { loadQmlJs, plain } = require('./load-qml-js.js')
+const { readQml } = require('./qml-source.js')
 
 const Model = loadQmlJs('MediaCardModel.js')
 const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'manifest.json'), 'utf8'))
@@ -32,8 +33,6 @@ test('manifest declara cada opção booleana com o tipo boolean', () => {
 
 // Every option on the settings screen must be read by the bar or the card.
 test('manifest só oferece opções que o widget ou o card leem', () => {
-  const sources = ['BarWidget.qml', 'MediaCard.qml']
-    .map((file) => fs.readFileSync(path.join(__dirname, '..', file), 'utf8'))
-    .join('\n')
+  const sources = ['BarWidget.qml', 'MediaCard.qml'].map(readQml).join('\n')
   for (const field of schema()) assert.match(sources, new RegExp(`config\\.${field.key}\\b`), `opção: ${field.key}`)
 })

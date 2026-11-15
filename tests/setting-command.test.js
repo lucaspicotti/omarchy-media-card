@@ -19,3 +19,13 @@ test('settingCommand recusa chave desconhecida ou valor inválido', () => {
     assert.deepStrictEqual(plain(Model.settingCommand(key, value)), [], `${key}: ${value}`)
   }
 })
+
+test('copyCommand copia o título por argv, com -- antes do texto', () => {
+  assert.deepStrictEqual(plain(Model.copyCommand('-n Maria Tambiên')), ['wl-copy', '--', '-n Maria Tambiên'])
+})
+
+test('copyCommand não roda nada sem título', () => {
+  for (const title of ['', null, undefined]) {
+    assert.deepStrictEqual(plain(Model.copyCommand(title)), [], `título: ${title}`)
+  }
+})

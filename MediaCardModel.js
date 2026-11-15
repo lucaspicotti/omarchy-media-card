@@ -73,6 +73,17 @@ function settingCommand(key, value) {
   return ["omarchy-bar", "set", PLUGIN_ID, key, JSON.stringify(value), "--json"]
 }
 
+// The settings screen's text for a bar style, as i18n keys.
+function barStyleLabels(style) {
+  return { label: "style." + style, description: "style." + style + "Description" }
+}
+
+// The argv that copies a track title, or empty when there is none.
+function copyCommand(text) {
+  var value = toText(text)
+  return value === "" ? [] : ["wl-copy", "--", value]
+}
+
 // Takes the already normalized hideWhenIdle (see settingsFrom).
 function widgetVisible(hasMedia, hideWhenIdle) {
   return !!hasMedia || !hideWhenIdle
@@ -132,18 +143,12 @@ function capitalize(text) {
   return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
-function playerState(player) {
-  if (!player) return ""
-  return player.isPlaying ? "playing" : "paused"
-}
-
-function tabsFor(players, selectedKey) {
+// The card's player tabs, as ButtonGroup options; only with more than one.
+function tabsFor(players) {
   var list = toArray(players)
   if (list.length < 2) return []
-  var shownKey = shownPlayerKey(list, selectedKey)
   return list.map(function(player) {
-    var key = playerKey(player)
-    return { key: key, label: playerLabel(player), selected: key === shownKey }
+    return { value: playerKey(player), label: playerLabel(player) }
   })
 }
 
@@ -156,22 +161,33 @@ function otherPlayers(players, selectedKey, showOthers) {
   list.forEach(function(player) {
     var key = playerKey(player)
     if (key === shownKey) return
+    var track = nowPlaying(player)
     result.push({
       key: key,
       label: playerLabel(player),
-      title: toText(player.trackTitle),
-      state: playerState(player),
-      artUrl: safeArtUrl(player.trackArtUrl)
+      title: track.title,
+      stateLabel: player.isPlaying ? "state.playing" : "state.paused",
+      artUrl: track.artUrl
     })
   })
   return result
 }
 
-// Indexed by Quickshell's MprisLoopState enum: None, Track, Playlist.
-var REPEAT_MODES = ["none", "track", "playlist"]
+// Indexed by Quickshell's MprisLoopState enum: None, Track, Playlist. Labels
+// are i18n keys.
+var REPEAT_MODES = [
+  { mode: "none", icon: "󰑗", label: "card.repeat" },
+  { mode: "track", icon: "󰑘", label: "card.repeatTrack" },
+  { mode: "playlist", icon: "󰑖", label: "card.repeatPlaylist" }
+]
 
+// The state of the transport buttons, with the icon each one shows. Labels
+// are i18n keys.
 function controlsFor(value) {
   var player = value || {}
+  var playing = !!player.isPlaying
+  var shuffleOn = !!player.shuffle
+  var repeat = REPEAT_MODES[player.loopState] || REPEAT_MODES[0]
   return {
     enabled: {
       previous: !!player.canGoPrevious,
@@ -182,9 +198,14 @@ function controlsFor(value) {
       raise: !!player.canRaise,
       volume: !!player.volumeSupported
     },
-    playing: !!player.isPlaying,
-    shuffleOn: !!player.shuffle,
-    repeatMode: REPEAT_MODES[player.loopState] || "none"
+    playing: playing,
+    playPauseIcon: playing ? "󰏤" : "󰐊",
+    playPauseLabel: playing ? "card.pause" : "card.play",
+    shuffleOn: shuffleOn,
+    shuffleIcon: shuffleOn ? "󰒝" : "󰒞",
+    repeatMode: repeat.mode,
+    repeatIcon: repeat.icon,
+    repeatLabel: repeat.label
   }
 }
 

@@ -30,3 +30,7 @@ test('trackLine junta só as partes preenchidas', () => {
   assert.strictEqual(Model.trackLine('Maria Tambiên', null), 'Maria Tambiên')
   assert.strictEqual(Model.trackLine('', ''), '')
 })
+
+test('barStyleLabels dá as chaves do nome e da descrição de cada estilo', () => {
+  assert.deepStrictEqual(plain(Model.barStyleLabels('controls')), { label: 'style.controls', description: 'style.controlsDescription' })
+})
