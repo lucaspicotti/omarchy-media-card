@@ -4,6 +4,8 @@
   "description": "Media controls for the Omarchy bar: cover, progress line and transport controls in three styles",
   "license": "MIT",
   "scripts": {
-    "test": "node --test tests/"
+    "test": "npm run test:unit && npm run test:qml",
+    "test:unit": "node --test tests/",
+    "test:qml": "QT_QPA_PLATFORM=offscreen QML_XHR_ALLOW_FILE_READ=1 /usr/lib/qt6/bin/qmltestrunner -import tests/qml/stubs -input tests/qml"
   }
 }
