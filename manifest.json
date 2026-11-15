@@ -25,7 +25,7 @@
         "type": "enum",
         "label": "Bar style",
         "options": [
-          { "value": "minimal", "label": "Minimal: icon and title" },
+          { "value": "minimal", "label": "Minimal: icon and \"Artist — Track\"" },
           { "value": "controls", "label": "Cover and controls" },
           { "value": "icon", "label": "Cover with progress line" }
         ],
